@@ -1,13 +1,12 @@
 #!/usr/bin/env just --justfile
 
+set windows-shell := ["powershell.exe"]
+
 release:
   cargo build --release    
 
 lint:
   cargo clippy
 
-bin:
-  cargo run --bin bin -- arg1
 
-example:
-  cargo run --example exname -- arg1
+
