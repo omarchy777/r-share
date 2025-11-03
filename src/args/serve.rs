@@ -10,7 +10,7 @@ use tokio::io::AsyncReadExt;
 
 /// Serve (send) a file to a trusted contact
 pub async fn run(file: PathBuf, to: String, _quiet: bool) -> Result<()> {
-    println!("{}", "🚀 Starting file transfer...\n".bright_cyan().bold());
+    println!("{}", " Serving...\n".bright_cyan().bold());
 
     // Validate file exists
     if !file.exists() {
@@ -74,7 +74,7 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool) -> Result<()> {
 
     // Initiate transfer session (blocks until receiver connects)
     // Metadata is sent via HTTP API
-    println!("{}", "⏳ Waiting for receiver to connect...".yellow());
+    println!("{}", " Waiting for receiver to connect...".yellow());
     let mut session = relay_client
         .serve(
             my_fingerprint.clone(),
@@ -121,6 +121,37 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool) -> Result<()> {
 
     session.flush().await?;
     pb.finish_with_message("Transfer complete!");
+
+    println!();
+    println!(" Waiting for receiver confirmation...");
+
+    // Wait for receiver's completion confirmation
+    let mut ack_buffer = vec![0u8; 10];
+    match session.read(&mut ack_buffer).await {
+        Ok(n) if n > 0 && &ack_buffer[..n] == b"DONE\n" => {
+            println!("{} Receiver confirmed receipt!", "✓".bright_green().bold());
+        }
+        Ok(n) => {
+            println!(
+                "{} Got {} bytes, expected DONE signal",
+                "⚠".bright_yellow().bold(),
+                n
+            );
+            if n > 0 {
+                println!(
+                    "   Received: {:?}",
+                    String::from_utf8_lossy(&ack_buffer[..n])
+                );
+            }
+        }
+        Err(e) => {
+            println!(
+                "{} Failed to read confirmation: {}",
+                "✗".bright_red().bold(),
+                e
+            );
+        }
+    }
 
     println!();
     println!("{} File sent successfully!", "✓".bright_green().bold());

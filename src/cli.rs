@@ -34,11 +34,7 @@ pub enum Commands {
 
         /// Only accept files from trusted contact
         #[arg(long, conflicts_with = "code")]
-        from: Option<String>,
-
-        /// Maximum file size to accept (MB)
-        #[arg(long, default_value = "500")]
-        max_size: u32,
+        from: String,
 
         /// Enable progress bars
         #[arg(long, default_value = "false")]

@@ -15,10 +15,9 @@ async fn main() -> Result<()> {
         Some(Commands::Listen {
             path,
             from,
-            max_size,
             quiet,
         }) => {
-            listen::run(path, from, max_size, quiet).await?;
+            listen::run(path, from, quiet).await?;
         }
         Some(Commands::Trust { action }) => match action {
             TrustAction::Add { name, key } => {
