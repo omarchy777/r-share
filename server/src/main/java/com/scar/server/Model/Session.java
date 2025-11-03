@@ -7,6 +7,7 @@ public class Session {
     private String filename;
     private long fileSize;
     private String signature;
+    private String fileHash;
     private String status;  // "waiting_receiver", "waiting_sender", "matched", "timeout"
     private long createdAt;
     private long expiresAt;
@@ -17,13 +18,14 @@ public class Session {
 
     // Constructor
     public Session(String sessionId, String senderFp, String receiverFp,
-                   String filename, long fileSize, String signature) {
+                   String filename, long fileSize, String signature, String fileHash) {
         this.sessionId = sessionId;
         this.senderFp = senderFp;
         this.receiverFp = receiverFp;
         this.filename = filename;
         this.fileSize = fileSize;
         this.signature = signature;
+        this.fileHash = fileHash;
         this.createdAt = System.currentTimeMillis();
         this.expiresAt = this.createdAt + 30_000;  // 30 seconds
         this.status = "waiting_receiver";
@@ -52,6 +54,10 @@ public class Session {
 
     public String getSignature() {
         return signature;
+    }
+
+    public String getFileHash() {
+        return fileHash;
     }
 
     public String getStatus() {

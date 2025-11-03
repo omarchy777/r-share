@@ -6,18 +6,20 @@ public class ServeRequest {
     private String filename;
     private long fileSize;
     private String signature;
+    private String fileHash;
 
     // Constructors
     public ServeRequest() {
     }
 
     public ServeRequest(String senderFp, String receiverFp, String filename,
-                        long fileSize, String signature) {
+                        long fileSize, String signature, String fileHash) {
         this.senderFp = senderFp;
         this.receiverFp = receiverFp;
         this.filename = filename;
         this.fileSize = fileSize;
         this.signature = signature;
+        this.fileHash = fileHash;
     }
 
     // Getters
@@ -41,6 +43,10 @@ public class ServeRequest {
         return signature;
     }
 
+    public String getFileHash() {
+        return fileHash;
+    }
+
     // Setters
     public void setSenderFp(String senderFp) {
         this.senderFp = senderFp;
@@ -60,5 +66,9 @@ public class ServeRequest {
 
     public void setSignature(String signature) {
         this.signature = signature;
+    }
+
+    public void setFileHash(String fileHash) {
+        this.fileHash = fileHash;
     }
 }

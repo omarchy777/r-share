@@ -7,6 +7,7 @@ public class ListenResponse {
     private String filename;
     private long fileSize;
     private String signature;
+    private String fileHash;
     private int socketPort;
     private String message;
 
@@ -16,13 +17,14 @@ public class ListenResponse {
 
     public ListenResponse(String status, String sessionId, String senderFp,
                           String filename, long fileSize, String signature,
-                          int socketPort, String message) {
+                          String fileHash, int socketPort, String message) {
         this.status = status;
         this.sessionId = sessionId;
         this.senderFp = senderFp;
         this.filename = filename;
         this.fileSize = fileSize;
         this.signature = signature;
+        this.fileHash = fileHash;
         this.socketPort = socketPort;
         this.message = message;
     }
@@ -50,6 +52,10 @@ public class ListenResponse {
 
     public String getSignature() {
         return signature;
+    }
+
+    public String getFileHash() {
+        return fileHash;
     }
 
     public int getSocketPort() {
@@ -83,6 +89,10 @@ public class ListenResponse {
 
     public void setSignature(String signature) {
         this.signature = signature;
+    }
+
+    public void setFileHash(String fileHash) {
+        this.fileHash = fileHash;
     }
 
     public void setSocketPort(int socketPort) {
