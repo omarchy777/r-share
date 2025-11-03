@@ -4,6 +4,7 @@ use crate::server::RelayClient;
 use crate::utils::error::{Error, Result};
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
+use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
@@ -60,6 +61,30 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool) -> Result<()> {
     );
     println!();
 
+    // Compute file hash for integrity verification
+    println!("{}", " Computing file hash...".bright_cyan());
+    let mut hasher = Sha256::new();
+    let mut file_for_hash = File::open(&file).await?;
+    let mut hash_buffer = vec![0u8; 64 * 1024];
+
+    loop {
+        let n = file_for_hash.read(&mut hash_buffer).await?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&hash_buffer[..n]);
+    }
+
+    let file_hash = hasher.finalize();
+    let file_hash_hex = hex::encode(file_hash);
+
+    println!(
+        "{} File hash: {}...",
+        "✓".bright_green(),
+        &file_hash_hex[..16].bright_cyan().dimmed()
+    );
+    println!();
+
     // Create relay client from config
     let relay_client = RelayClient::new(
         config.server.http_url.clone(),
@@ -67,8 +92,8 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool) -> Result<()> {
         config.server.socket_port,
     );
 
-    // Create transfer metadata and signature
-    let metadata_msg = format!("{}|{}", filename, filesize);
+    // Create transfer metadata and signature (includes file hash)
+    let metadata_msg = format!("{}|{}|{}", filename, filesize, file_hash_hex);
     let metadata_signature = signing::sign_data(&signing_key, &metadata_msg)?;
     let signature_hex = hex::encode(metadata_signature.to_bytes());
 
@@ -82,6 +107,7 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool) -> Result<()> {
             filename.clone(),
             filesize,
             signature_hex,
+            file_hash_hex,
         )
         .await?;
 
@@ -102,7 +128,7 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool) -> Result<()> {
         ProgressStyle::default_bar()
             .template("{spinner:.green} [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})")
             .unwrap()
-            .progress_chars("#>-"),
+            .progress_chars(" ▰ ▰ ▰ ▱ ▱ "),
     );
 
     let mut buffer = vec![0u8; 64 * 1024]; // 64KB chunks
@@ -134,7 +160,7 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool) -> Result<()> {
         Ok(n) => {
             println!(
                 "{} Got {} bytes, expected DONE signal",
-                "⚠".bright_yellow().bold(),
+                "✗".bright_yellow().bold(),
                 n
             );
             if n > 0 {

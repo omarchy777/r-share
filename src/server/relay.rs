@@ -30,6 +30,8 @@ struct ServeRequest {
     #[serde(rename = "fileSize")]
     file_size: u64,
     signature: String,
+    #[serde(rename = "fileHash")]
+    file_hash: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -61,6 +63,8 @@ struct ListenResponse {
     #[serde(rename = "fileSize")]
     file_size: u64,
     signature: String,
+    #[serde(rename = "fileHash")]
+    file_hash: String,
     #[serde(rename = "socketPort")]
     socket_port: u16,
     message: String,
@@ -76,6 +80,7 @@ pub struct TransferSession {
     pub file_size: Option<u64>,
     pub signature: Option<String>,
     pub sender_fp: Option<String>,
+    pub file_hash: Option<String>,
 }
 
 impl TransferSession {
@@ -147,6 +152,7 @@ impl RelayClient {
         filename: String,
         file_size: u64,
         signature: String,
+        file_hash: String,
     ) -> Result<TransferSession> {
         // Call HTTP API to create session
         let client = reqwest::Client::new();
@@ -158,6 +164,7 @@ impl RelayClient {
             filename,
             file_size,
             signature,
+            file_hash,
         };
 
         let response = client
@@ -194,6 +201,7 @@ impl RelayClient {
             file_size: None,
             signature: None,
             sender_fp: None,
+            file_hash: None,
         })
     }
 
@@ -241,6 +249,7 @@ impl RelayClient {
             file_size: Some(session.file_size),
             signature: Some(session.signature),
             sender_fp: Some(session.sender_fp),
+            file_hash: Some(session.file_hash),
         })
     }
 
@@ -258,6 +267,31 @@ impl RelayClient {
             .write_all(handshake.as_bytes())
             .await
             .map_err(|e| Error::NetworkError(format!("Failed to send handshake: {}", e)))?;
+
+        // Wait for READY signal from server (indicates pairing complete)
+        use tokio::io::AsyncReadExt;
+        let mut ready_buffer = [0u8; 6]; // "READY\n" is 6 bytes
+        socket
+            .read_exact(&mut ready_buffer)
+            .await
+            .map_err(|e| Error::NetworkError(format!("Failed to read READY signal: {}", e)))?;
+
+        let ready_signal = String::from_utf8_lossy(&ready_buffer);
+        if ready_signal != "READY\n" {
+            return Err(Error::NetworkError(format!(
+                "Expected READY signal, got: {}",
+                ready_signal.trim()
+            )));
+        }
+
+        // Send ACK to confirm we're ready to receive/send data
+        socket
+            .write_all(b"ACK\n")
+            .await
+            .map_err(|e| Error::NetworkError(format!("Failed to send ACK: {}", e)))?;
+
+        // Give server time to process ACK and activate relay before data starts flowing
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
         Ok(socket)
     }

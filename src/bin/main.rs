@@ -12,11 +12,7 @@ async fn main() -> Result<()> {
         Some(Commands::Init { keys, force }) => {
             init::run(keys, force).await?;
         }
-        Some(Commands::Listen {
-            path,
-            from,
-            quiet,
-        }) => {
+        Some(Commands::Listen { path, from, quiet }) => {
             listen::run(path, from, quiet).await?;
         }
         Some(Commands::Trust { action }) => match action {

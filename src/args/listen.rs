@@ -4,9 +4,10 @@ use crate::server::RelayClient;
 use crate::utils::error::{Error, Result};
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
+use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 /// Listen for incoming file transfers
 pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool) -> Result<()> {
@@ -75,10 +76,12 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool) -> Result<()
         .sender_fp
         .clone()
         .ok_or_else(|| Error::InvalidInput("No sender fingerprint in session".into()))?;
+    let file_hash_from_sender = session
+        .file_hash
+        .clone()
+        .ok_or_else(|| Error::InvalidInput("No file hash in session".into()))?;
 
-    // THESE CHECKS ARE SO OBVIOUS AS SERVER ALREADY DO THE MATCHING, SO WE CAN SKIP/IGNORE THEM FOR NOW
-
-    // Verify sender fingerprint
+    // Verify sender is the expected contact
     if expected_sender.public_key != sender_fp {
         return Err(Error::InvalidInput(format!(
             "Sender fingerprint mismatch! Expected {}, got {}",
@@ -87,30 +90,55 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool) -> Result<()
         )));
     }
 
-    // Decode sender's public key
-    //let sender_key_bytes = hex::decode(sender_fp)
-    //    .map_err(|_| Error::InvalidInput("Invalid sender public key".into()))?;
-    //let sender_key = ed25519_dalek::VerifyingKey::from_bytes(
-    //    sender_key_bytes
-    //        .as_slice()
-    //        .try_into()
-    //        .map_err(|_| Error::InvalidInput("Invalid key length".into()))?,
-    //)
-    //.map_err(|_| Error::InvalidInput("Invalid sender key".into()))?;
+    // Decode sender's public key for signature verification
+    let sender_key_bytes = hex::decode(&sender_fp)
+        .map_err(|_| Error::InvalidInput("Invalid sender public key".into()))?;
+    let sender_key = ed25519_dalek::VerifyingKey::from_bytes(
+        sender_key_bytes
+            .as_slice()
+            .try_into()
+            .map_err(|_| Error::InvalidInput("Invalid key length".into()))?,
+    )
+    .map_err(|_| Error::InvalidInput("Invalid sender key".into()))?;
 
-    // Verify signature
-    //let metadata_msg = format!("{}|{}", filename, filesize);
-    //let signature_bytes = hex::decode(signature_hex)
-    //    .map_err(|_| Error::InvalidInput("Invalid signature hex".into()))?;
-    //let signature = ed25519_dalek::Signature::from_bytes(
-    //    signature_bytes
-    //        .as_slice()
-    //        .try_into()
-    //        .map_err(|_| Error::InvalidInput("Invalid signature length".into()))?,
-    //);
+    // Verify Ed25519 signature on metadata (filename|filesize|hash)
+    let metadata_msg = format!("{}|{}|{}", filename, filesize, file_hash_from_sender);
+    let signature_bytes = hex::decode(&signature_hex)
+        .map_err(|_| Error::InvalidInput("Invalid signature hex".into()))?;
+    let signature = ed25519_dalek::Signature::from_bytes(
+        signature_bytes
+            .as_slice()
+            .try_into()
+            .map_err(|_| Error::InvalidInput("Invalid signature length".into()))?,
+    );
 
-    //signing::verify_signature(&sender_key, &metadata_msg, &signature)?;
-    //println!("{} Signature verified", "✓".bright_green());
+    // Verify signature - enhanced error message
+    if let Err(_) = signing::verify_signature(&sender_key, &metadata_msg, &signature) {
+        println!();
+        println!("{} SIGNATURE VERIFICATION FAILED!", "✗".bright_red().bold());
+        println!("   Sender claims: {}...", &sender_fp[..16].bright_red());
+        if let Some(ref expected) = expected_sender.public_key.get(..16) {
+            println!("   Expected from: {}...", expected.bright_yellow());
+        }
+        println!();
+        println!(
+            "{} This could be an impersonation attempt or corrupted metadata!",
+            "✗".bright_yellow()
+        );
+        println!("{} Transfer REJECTED.", "✗".bright_red().bold());
+
+        // Send error signal to sender
+        let _ = session.write_all(b"ERROR:signature_failed\n").await;
+        let _ = session.flush().await;
+
+        return Err(Error::InvalidInput("Signature verification failed".into()));
+    }
+
+    println!("{} Signature verified", "✓".bright_green());
+    println!(
+        "   Expected hash: {}...",
+        &file_hash_from_sender[..16].bright_cyan().dimmed()
+    );
 
     println!("{} Incoming file transfer", "✓".bright_green());
     println!("   File: {}", filename.bright_yellow());
@@ -120,10 +148,10 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool) -> Result<()
         filesize as f64 / (1024.0 * 1024.0)
     );
     println!();
-    println!("{} Receiving file...", "⬇".bright_cyan());
+    println!("{} Receiving file...", "✓".bright_cyan());
 
     // Receive file data with progress bar
-    let file_path = download_path.join(filename);
+    let file_path = download_path.join(&filename);
     let mut file_writer = File::create(&file_path).await?;
 
     let pb = ProgressBar::new(filesize);
@@ -131,7 +159,7 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool) -> Result<()
         ProgressStyle::default_bar()
             .template("{spinner:.green} [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})")
             .unwrap()
-            .progress_chars("#>-"),
+            .progress_chars(" ▰ ▰ ▰ ▱ ▱ "),
     );
 
     let mut buffer = vec![0u8; 64 * 1024]; // 64KB chunks
@@ -148,7 +176,17 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool) -> Result<()
                 filesize,
                 (total_received as f64 / filesize as f64) * 100.0
             );
-            break;
+
+            // Clean up partial file immediately
+            drop(file_writer);
+            tokio::fs::remove_file(&file_path).await?;
+            println!("{} Partial file deleted", "✓".bright_red());
+
+            // Note: Cannot send ERROR signal here as connection is already closed
+
+            return Err(Error::InvalidInput(
+                "Transfer interrupted - connection closed early".into(),
+            ));
         }
 
         file_writer.write_all(&buffer[..n]).await?;
@@ -158,6 +196,56 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool) -> Result<()
 
     file_writer.flush().await?;
     pb.finish_with_message("Download complete!");
+
+    // Verify file integrity by computing SHA256 hash
+    println!();
+    println!("{}", " Verifying file integrity...".bright_cyan());
+
+    let mut hasher = Sha256::new();
+    let mut file_for_hash = File::open(&file_path).await?;
+    let mut hash_buffer = vec![0u8; 64 * 1024];
+
+    loop {
+        let n = file_for_hash.read(&mut hash_buffer).await?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&hash_buffer[..n]);
+    }
+
+    let computed_hash = hex::encode(hasher.finalize());
+
+    // Compare with expected hash from signature
+    if computed_hash != file_hash_from_sender {
+        println!();
+        println!("{} FILE INTEGRITY CHECK FAILED!", "✗".bright_red().bold());
+        println!(
+            "   Expected: {}...",
+            &file_hash_from_sender[..16].bright_yellow()
+        );
+        println!("   Got:      {}...", &computed_hash[..16].bright_red());
+        println!();
+
+        // Delete corrupted file
+        tokio::fs::remove_file(&file_path).await?;
+        println!("{} Corrupted file deleted: {}", "✓".bright_red(), filename);
+        println!(
+            "{} The file may have been tampered with or corrupted during transfer!",
+            "✗".bright_yellow()
+        );
+
+        // Send error signal to sender
+        let _ = session.write_all(b"ERROR:hash_mismatch\n").await;
+        let _ = session.flush().await;
+
+        return Err(Error::InvalidInput("File integrity check failed".into()));
+    }
+
+    println!("{} File integrity verified", "✓".bright_green());
+    println!(
+        "   Hash: {}...",
+        &computed_hash[..16].bright_cyan().dimmed()
+    );
 
     // Send completion confirmation to sender
     println!();
@@ -170,14 +258,14 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool) -> Result<()
     println!("   Saved to: {}", file_path.display());
     println!(
         "   Size: {} bytes ({:.2} MB)",
-        total_received, // Show what we actually got
+        total_received,
         total_received as f64 / (1024.0 * 1024.0)
     );
 
     if total_received < filesize {
         println!(
             "   {} Expected {} bytes, got {} bytes",
-            "⚠".bright_yellow().bold(),
+            "✗".bright_yellow().bold(),
             filesize,
             total_received
         );
