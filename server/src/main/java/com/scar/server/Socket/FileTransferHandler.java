@@ -41,7 +41,7 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
     private static class BufferedMessage {
         final ChannelHandlerContext ctx;
         final ByteBuf buf;
-        
+
         BufferedMessage(ChannelHandlerContext ctx, ByteBuf buf) {
             this.ctx = ctx;
             this.buf = buf;
@@ -73,7 +73,7 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
             forwardData(ctx, buf);
         } else {
             // Buffer data until both clients ACK
-            log.debug("Buffering {} bytes until paired | Session: {}", 
+            log.debug("Buffering {} bytes until paired | Session: {}",
                     buf.readableBytes(), sessionId.substring(0, 8));
             bufferedData.add(new BufferedMessage(ctx, buf.retain()));
             buf.release();
@@ -83,7 +83,7 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
     private void handleAckMessage(ChannelHandlerContext ctx, ByteBuf buf) {
         // Check if this is an ACK message
         int newlineIndex = buf.indexOf(buf.readerIndex(), buf.writerIndex(), (byte) '\n');
-        
+
         if (newlineIndex == -1) {
             log.warn("Waiting for ACK, but no newline found");
             buf.release();
@@ -253,7 +253,7 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
 
             registry.removeByChannel(ctx.channel());
         }
-        
+
         // Release any buffered data
         for (BufferedMessage msg : bufferedData) {
             msg.buf.release();
@@ -264,13 +264,13 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         log.error("Socket error: {}", cause.getMessage());
-        
+
         // Release buffered data on error
         for (BufferedMessage msg : bufferedData) {
             msg.buf.release();
         }
         bufferedData.clear();
-        
+
         ctx.close();
     }
 
@@ -279,10 +279,10 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
      */
     public void setPaired(boolean paired) {
         this.paired = paired;
-        
+
         // Flush any buffered data now that we're paired
         if (paired && !bufferedData.isEmpty()) {
-            log.info("Flushing {} buffered chunks | Session: {}", 
+            log.info("Flushing {} buffered chunks | Session: {}",
                     bufferedData.size(), sessionId.substring(0, 8));
             for (BufferedMessage msg : bufferedData) {
                 if (msg.buf.isReadable()) {

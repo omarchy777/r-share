@@ -23,20 +23,21 @@ public class SessionService {
 
     public CompletableFuture<Session> initiateAndWait(
             String senderFp, String receiverFp, String filename,
-            long fileSize, String signature) {
+            long fileSize, String signature, String fileHash) {
 
         // Validate inputs
         if (senderFp == null || senderFp.isEmpty() ||
                 receiverFp == null || receiverFp.isEmpty() ||
                 filename == null || filename.isEmpty() ||
-                signature == null || signature.isEmpty()) {
+                signature == null || signature.isEmpty() ||
+                fileHash == null || fileHash.isEmpty()) {
             CompletableFuture<Session> failed = new CompletableFuture<>();
             failed.completeExceptionally(new IllegalArgumentException("Missing required fields"));
             return failed;
         }
 
         String sessionId = UUID.randomUUID().toString();
-        Session session = new Session(sessionId, senderFp, receiverFp, filename, fileSize, signature);
+        Session session = new Session(sessionId, senderFp, receiverFp, filename, fileSize, signature, fileHash);
 
         sessions.put(sessionId, session);
 
