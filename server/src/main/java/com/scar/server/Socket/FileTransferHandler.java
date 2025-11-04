@@ -51,7 +51,7 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    public void channelRead(ChannelHandlerContext ctx, Object msg) {
         if (!(msg instanceof ByteBuf)) {
             return;
         }
@@ -244,7 +244,7 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+    public void channelInactive(ChannelHandlerContext ctx) {
         if (sessionId != null) {
             log.info("Channel disconnected: {} | Session: {}{}{}",
                     ctx.channel().remoteAddress(),
@@ -268,7 +268,7 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         log.warn("Socket warning: {}", cause.getMessage());
 
         // Release buffered data on error

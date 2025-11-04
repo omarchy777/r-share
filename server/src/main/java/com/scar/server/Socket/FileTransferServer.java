@@ -10,12 +10,20 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
 public class FileTransferServer {
     private static final Logger log = LoggerFactory.getLogger(FileTransferServer.class);
-    private static final int PORT = 10000;
+    @Value("${server.socket.port:10000}")
+    private int PORT;
+    @Value("${rshare.netty.boss-threads:1}")
+    private int bossThreads;
+    @Value("${rshare.netty.worker-threads:4}")
+    private int workerThreads;
+    @Value("${rshare.netty.backlog:128}")
+    private int backlog;
 
     private EventLoopGroup bossGroup;
     private EventLoopGroup workerGroup;
@@ -29,8 +37,8 @@ public class FileTransferServer {
 
     @PostConstruct
     public void start() throws Exception {
-        bossGroup = new NioEventLoopGroup(1);
-        workerGroup = new NioEventLoopGroup(4);
+        bossGroup = new NioEventLoopGroup(bossThreads);
+        workerGroup = new NioEventLoopGroup(workerThreads);
 
         new Thread(() -> {
             try {
@@ -47,7 +55,7 @@ public class FileTransferServer {
                                         .addLast(new FileTransferHandler(registry, sessionService));
                             }
                         })
-                        .option(ChannelOption.SO_BACKLOG, 128)
+                        .option(ChannelOption.SO_BACKLOG, backlog)
                         .childOption(ChannelOption.SO_KEEPALIVE, true)
                         .childOption(ChannelOption.TCP_NODELAY, true);
 

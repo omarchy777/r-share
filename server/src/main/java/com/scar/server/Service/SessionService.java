@@ -3,6 +3,7 @@ package com.scar.server.Service;
 import com.scar.server.Model.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -17,7 +18,8 @@ import static com.scar.server.Controller.SessionController.*;
 
 @Service
 public class SessionService {
-    private static final long BLOCKING_TIMEOUT = 30_000; // 30 seconds
+    @Value("${rshare.session.blocking-timeout-ms:30000}")
+    private long BLOCKING_TIMEOUT;
     private static final Logger log = LoggerFactory.getLogger(SessionService.class);
 
     private final Map<String, Session> sessions = new ConcurrentHashMap<>();
