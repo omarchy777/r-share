@@ -1,13 +1,14 @@
+use crate::config::constants::*;
 use crate::crypto::signing;
 use crate::dirs::{config, contacts, keys};
 use crate::server::RelayClient;
 use crate::utils::error::{Error, Result};
+use crate::utils::file_io;
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
-use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 use tokio::fs::File;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 
 /// Listen for incoming file transfers
 pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool) -> Result<()> {
@@ -157,12 +158,12 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool) -> Result<()
     let pb = ProgressBar::new(filesize);
     pb.set_style(
         ProgressStyle::default_bar()
-            .template("{spinner:.green} [ {bar:60.cyan/blue} ] {bytes}/{total_bytes} ({bytes_per_sec}) ⏱ ({eta})")
+            .template(PROGRESS_BAR_TEMPLATE)
             .unwrap()
-            .progress_chars("░▒▓█"),
+            .progress_chars(PROGRESS_BAR_CHARS),
     );
 
-    let mut buffer = vec![0u8; 64 * 1024]; // 64KB chunks
+    let mut buffer = vec![0u8; FILE_CHUNK_SIZE];
     let mut total_received = 0u64;
 
     while total_received < filesize {
@@ -201,19 +202,8 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool) -> Result<()
     println!();
     println!("{}", " Verifying file integrity...".bright_cyan());
 
-    let mut hasher = Sha256::new();
-    let mut file_for_hash = File::open(&file_path).await?;
-    let mut hash_buffer = vec![0u8; 64 * 1024];
-
-    loop {
-        let n = file_for_hash.read(&mut hash_buffer).await?;
-        if n == 0 {
-            break;
-        }
-        hasher.update(&hash_buffer[..n]);
-    }
-
-    let computed_hash = hex::encode(hasher.finalize());
+    // Use the extracted file_io utility
+    let computed_hash = file_io::compute_file_hash(&file_path).await?;
 
     // Compare with expected hash from signature
     if computed_hash != file_hash_from_sender {
@@ -244,17 +234,22 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool) -> Result<()
     println!("{} File integrity verified", "✓".bright_green());
     println!(
         "   Hash: {}...",
-        &computed_hash[..16].bright_cyan().dimmed()
+        &computed_hash[..KEY_FINGERPRINT_DISPLAY_LEN]
+            .bright_cyan()
+            .dimmed()
     );
 
     // Send completion confirmation to sender
     println!();
     println!(" Sending completion signal to sender...");
-    session.write_all(b"DONE\n").await?;
+    session.write_all(DONE_SIGNAL).await?;
     session.flush().await?;
 
     println!();
-    println!("{} File received successfully! ;)", "✓".bright_green().bold());
+    println!(
+        "{} File received successfully! ;)",
+        "✓".bright_green().bold()
+    );
     println!("   Saved to: {}", file_path.display());
     println!(
         "   Size: {} bytes ({:.2} MB)",

@@ -1,3 +1,3 @@
 mod relay;
 
-pub use relay::{RelayClient, TransferRole, TransferSession};
+pub use relay::*;

@@ -1,3 +1,4 @@
+use crate::config::{ACK_SIGNAL, MAX_DONE_WAIT_SECS, READY_SIGNAL};
 use crate::utils::error::{Error, Result};
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -71,6 +72,7 @@ struct ListenResponse {
 }
 
 /// Active transfer session with socket connection
+#[allow(dead_code)]
 pub struct TransferSession {
     session_id: String,
     role: TransferRole,
@@ -93,6 +95,7 @@ impl TransferSession {
     }
 
     /// Write data to the socket connection
+    #[allow(dead_code)]
     pub async fn write(&mut self, data: &[u8]) -> Result<usize> {
         self.socket
             .write(data)
@@ -122,6 +125,7 @@ impl TransferSession {
     }
 
     /// Get the transfer role
+    #[allow(dead_code)]
     pub fn role(&self) -> TransferRole {
         self.role
     }
@@ -277,7 +281,7 @@ impl RelayClient {
             .map_err(|e| Error::NetworkError(format!("Failed to read READY signal: {}", e)))?;
 
         let ready_signal = String::from_utf8_lossy(&ready_buffer);
-        if ready_signal != "READY\n" {
+        if ready_signal.as_bytes() != READY_SIGNAL {
             return Err(Error::NetworkError(format!(
                 "Expected READY signal, got: {}",
                 ready_signal.trim()
@@ -286,12 +290,12 @@ impl RelayClient {
 
         // Send ACK to confirm we're ready to receive/send data
         socket
-            .write_all(b"ACK\n")
+            .write_all(ACK_SIGNAL)
             .await
             .map_err(|e| Error::NetworkError(format!("Failed to send ACK: {}", e)))?;
 
-        // Give server time to process ACK and activate relay before data starts flowing
-        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        // VERY CRITICAL!!! -> Give server time to process ACK and activate relay before data starts flowing
+        tokio::time::sleep(tokio::time::Duration::from_millis(MAX_DONE_WAIT_SECS)).await;
 
         Ok(socket)
     }

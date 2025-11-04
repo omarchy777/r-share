@@ -1,10 +1,11 @@
+use crate::config::constants::*;
 use crate::crypto::signing;
 use crate::dirs::{config, contacts, keys};
 use crate::server::RelayClient;
 use crate::utils::error::{Error, Result};
+use crate::utils::file_io;
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
-use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
@@ -26,6 +27,8 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool) -> Result<()> {
             "Only single files are supported currently".into(),
         ));
     }
+
+    file_io::validate_file_path(&file).await?;
 
     let filename = file
         .file_name()
@@ -63,20 +66,14 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool) -> Result<()> {
 
     // Compute file hash for integrity verification
     println!("{}", " Computing file hash...".bright_cyan());
-    let mut hasher = Sha256::new();
-    let mut file_for_hash = File::open(&file).await?;
-    let mut hash_buffer = vec![0u8; 64 * 1024];
-
-    loop {
-        let n = file_for_hash.read(&mut hash_buffer).await?;
-        if n == 0 {
-            break;
-        }
-        hasher.update(&hash_buffer[..n]);
-    }
-
-    let file_hash = hasher.finalize();
-    let file_hash_hex = hex::encode(file_hash);
+    let file_hash_hex = file_io::compute_file_hash(&file).await?;
+    println!(
+        "{}  Hash: {}...",
+        "✓".bright_green(),
+        &file_hash_hex[..KEY_FINGERPRINT_DISPLAY_LEN]
+            .bright_cyan()
+            .dimmed()
+    );
 
     println!(
         "{} File hash: {}...",
@@ -126,12 +123,12 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool) -> Result<()> {
     let pb = ProgressBar::new(filesize);
     pb.set_style(
         ProgressStyle::default_bar()
-            .template("{spinner:.green} [ {bar:60.cyan/blue} ] {bytes}/{total_bytes} ({bytes_per_sec}) ({eta})")
+            .template(PROGRESS_BAR_TEMPLATE)
             .unwrap()
-            .progress_chars("░▒▓█"),
+            .progress_chars(PROGRESS_BAR_CHARS),
     );
 
-    let mut buffer = vec![0u8; 64 * 1024]; // 64KB chunks
+    let mut buffer = vec![0u8; FILE_CHUNK_SIZE];
     let mut total_sent = 0u64;
 
     loop {
@@ -154,7 +151,7 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool) -> Result<()> {
     // Wait for receiver's completion confirmation
     let mut ack_buffer = vec![0u8; 10];
     match session.read(&mut ack_buffer).await {
-        Ok(n) if n > 0 && &ack_buffer[..n] == b"DONE\n" => {
+        Ok(n) if n > 0 && &ack_buffer[..n] == DONE_SIGNAL => {
             println!("{} Receiver confirmed receipt!", "✓".bright_green().bold());
         }
         Ok(n) => {
@@ -180,7 +177,10 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool) -> Result<()> {
     }
 
     println!();
-    println!("{} File reached successfully! :)", "✓".bright_green().bold());
+    println!(
+        "{} File reached successfully! :)",
+        "✓".bright_green().bold()
+    );
     println!(
         "   Transferred: {} bytes ({:.2} MB)",
         total_sent,
