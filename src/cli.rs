@@ -33,11 +33,11 @@ pub enum Commands {
         path: Option<PathBuf>,
 
         /// Only accept files from trusted contact
-        #[arg(long, conflicts_with = "code")]
+        #[arg(short, long, conflicts_with = "code")]
         from: String,
 
         /// Enable progress bars
-        #[arg(long, default_value = "false")]
+        #[arg(short, long, default_value = "false")]
         quiet: bool,
     },
 
@@ -51,7 +51,7 @@ pub enum Commands {
         to: String,
 
         /// Enable progress bars
-        #[arg(long, default_value = "false")]
+        #[arg(short, long, default_value = "false")]
         quiet: bool,
     },
 
