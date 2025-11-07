@@ -1,5 +1,5 @@
 use crate::dirs::config::Config;
-use crate::dirs::{config, keys};
+use crate::dirs::{config, contacts, keys};
 use crate::utils::error::Result;
 use colored::Colorize;
 use std::path::PathBuf;
@@ -65,6 +65,12 @@ pub async fn run(key_path: Option<PathBuf>, force: bool) -> Result<()> {
     // Save keys
     println!("{}", " Saving keys".bright_cyan());
     keys::save_keys_to(&private_key, &public_key, keys_path.clone())?;
+
+    // Add self to trust
+    println!("{}", " Adding self to trust".bright_cyan());
+    let mut contacts = contacts::load_contacts()?;
+    contacts.add("self".to_string(), hex::encode(&public_key.to_bytes()))?;
+    contacts::save_contacts(&contacts)?;
 
     // Create/update config
     println!("{}", " Saving config and downloads dirs".bright_cyan());
