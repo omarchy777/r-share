@@ -8,7 +8,6 @@ use std::path::PathBuf;
 pub struct Config {
     pub path: PathConfig,
     pub server: ServerConfig,
-    pub trusted_contact: TrustedContact,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,10 +46,6 @@ impl Default for Config {
                 socket_port: 10000,
                 socket_host: DEFAULT_SOCKET_HOST.to_string(),
             },
-            trusted_contact: TrustedContact {
-                name: "default".to_string(),
-                public_key: "".to_string(),
-            },
         }
     }
 }
@@ -71,10 +66,6 @@ impl Config {
                 http_url: DEFAULT_HTTP_URL.to_string(),
                 socket_port: 10000,
                 socket_host: DEFAULT_SOCKET_HOST.to_string(),
-            },
-            trusted_contact: TrustedContact {
-                name: "default".to_string(),
-                public_key: "".to_string(),
             },
         }
     }
