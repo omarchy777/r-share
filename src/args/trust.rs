@@ -40,7 +40,7 @@ pub async fn list(verbose: bool) -> Result<()> {
         println!("{}", format!("  • {}", contact.name).bright_white().bold());
 
         if verbose {
-            println!("    Key:   {}", &contact.public_key[..16].bright_yellow());
+            println!("    Key:   {}", &contact.public_key.bright_yellow());
             println!("    Added: {}", contact.added_at.dimmed());
         }
 

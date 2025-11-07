@@ -15,10 +15,10 @@ pub const MAX_FILE_SIZE: u64 = 10 * 1024 * 1024 * 1024;
 // Network Constants
 
 /// Default relay server HTTP URL
-pub const DEFAULT_HTTP_URL: &str = "http://localhost:8080";
+pub const DEFAULT_HTTP_URL: &str = "http://80.225.234.249:8080";
 
 /// Default relay server socket host
-pub const DEFAULT_SOCKET_HOST: &str = "localhost";
+pub const DEFAULT_SOCKET_HOST: &str = "80.225.234.249";
 
 /// Default relay server socket port
 pub const DEFAULT_SOCKET_PORT: u16 = 10000;
@@ -44,10 +44,10 @@ pub const KEY_FINGERPRINT_DISPLAY_LEN: usize = 16;
 
 /// Progress bar template
 pub const PROGRESS_BAR_TEMPLATE: &str =
-    "{spinner:.green} [{bar:40.cyan/blue}] {bytes}/{total_bytes} |{bytes_per_sec}| ({eta})";
+    "{spinner:.green} [{bar:40.cyan/blue}] -> ({percent}%) |{bytes_per_sec}| *{eta}*";
 
 /// Progress bar characters
-pub const PROGRESS_BAR_CHARS: &str = "%$>-";
+pub const PROGRESS_BAR_CHARS: &str = "░▒▓█";
 
 /// Application name for display
 pub const APP_NAME: &str = "R-Share";

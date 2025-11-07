@@ -85,7 +85,7 @@ pub async fn run(key_path: Option<PathBuf>, force: bool) -> Result<()> {
     println!("\n{}", " Fingerprints:".bright_cyan());
     println!(
         "   Private: {}",
-        hex::encode(&private_key.to_bytes()).bright_white()
+        hex::encode(&private_key.to_bytes()[..12]).bright_white()
     );
     println!(
         "   Public:  {}",
