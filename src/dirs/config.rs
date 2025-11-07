@@ -1,3 +1,4 @@
+use crate::config::*;
 use crate::dirs::keys;
 use crate::utils::error::{Error, Result};
 use serde::{Deserialize, Serialize};
@@ -18,13 +19,9 @@ pub struct PathConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfig {
-    pub port: u16,
-    pub server: Option<String>,
-    pub hold_in_memory: bool,
-    pub max_file_size_mb: u32,
     pub http_url: String,
-    pub socket_host: String,
     pub socket_port: u16,
+    pub socket_host: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,13 +43,9 @@ impl Default for Config {
                 }
             },
             server: ServerConfig {
-                port: 8080,
-                server: None,
-                hold_in_memory: false,
-                max_file_size_mb: 500,
-                http_url: "http://localhost:8080".to_string(),
-                socket_host: "localhost".to_string(),
+                http_url: DEFAULT_HTTP_URL.to_string(),
                 socket_port: 10000,
+                socket_host: DEFAULT_SOCKET_HOST.to_string(),
             },
             trusted_contact: TrustedContact {
                 name: "default".to_string(),
@@ -75,13 +68,9 @@ impl Config {
                 }
             },
             server: ServerConfig {
-                port: 8080,
-                server: None,
-                hold_in_memory: false,
-                max_file_size_mb: 500,
-                http_url: "http://localhost:8080".to_string(),
-                socket_host: "localhost".to_string(),
+                http_url: DEFAULT_HTTP_URL.to_string(),
                 socket_port: 10000,
+                socket_host: DEFAULT_SOCKET_HOST.to_string(),
             },
             trusted_contact: TrustedContact {
                 name: "default".to_string(),

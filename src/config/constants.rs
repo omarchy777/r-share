@@ -40,29 +40,6 @@ pub const SHA256_HASH_LEN: usize = 32;
 /// Number of hex characters to display for key fingerprints
 pub const KEY_FINGERPRINT_DISPLAY_LEN: usize = 16;
 
-// File System Constants
-
-/// Default directory for R-Share configuration and keys
-pub const DEFAULT_CONFIG_DIR: &str = ".rshare";
-
-/// Default directory name for keys within config directory
-pub const KEYS_DIR_NAME: &str = "keys";
-
-/// Private key filename
-pub const PRIVATE_KEY_FILENAME: &str = "private_key";
-
-/// Public key filename
-pub const PUBLIC_KEY_FILENAME: &str = "public_key";
-
-/// Config file name
-pub const CONFIG_FILENAME: &str = "config.toml";
-
-/// Contacts file name
-pub const CONTACTS_FILENAME: &str = "contact.json";
-
-/// Default downloads directory name
-pub const DEFAULT_DOWNLOADS_DIR: &str = "rshare/downloads";
-
 // UI/Display Constants
 
 /// Progress bar template

@@ -35,8 +35,8 @@ pub fn show_welcome() {
                             hex::encode(&private.to_bytes()[..4]).dimmed()
                         );
                         println!(
-                            "   Public:  {}....",
-                            hex::encode(&public.to_bytes()[..4]).dimmed()
+                            "   Public:  {}",
+                            hex::encode(&public.to_bytes()).bright_white()
                         );
                     }
                     Err(_) => {
