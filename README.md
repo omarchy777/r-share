@@ -6,8 +6,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
 
 **R-Share** is a secure, **blazingly-fast** and lightweight peer-to-peer file sharing tool with **Ed25519 cryptographic
-signatures** and *
-**SHA256 integrity verification**. Built with Rust CLI clients and a Spring Boot + Netty relay server.
+signatures** and **SHA256 integrity verification**. Built with Rust CLI clients and a Spring Boot + Netty relay server.
 
 ## Features
 
