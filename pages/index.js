@@ -1,9 +1,42 @@
 const API_URL = 'http://140.245.17.34:8080/api/relay/status';
 const REFRESH_INTERVAL = 3000;
 const FETCH_TIMEOUT = 5000;
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000;
 
 let intervalId = null;
 let isPageVisible = true;
+let retryCount = 0;
+let lastSuccessfulFetch = null;
+
+// Notification
+function showToast(message, type = 'error', duration = 4000) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+
+    const messageEl = document.createElement('div');
+    messageEl.className = 'toast-message';
+    messageEl.textContent = message;
+    toast.appendChild(messageEl);
+
+    container.appendChild(toast);
+
+    requestAnimationFrame(() => {
+        toast.classList.add('show');
+    });
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            if (toast.parentNode) {
+                container.removeChild(toast);
+            }
+        }, 300);
+    }, duration);
+}
 
 // Utility functions
 function formatUptime(seconds) {
@@ -45,6 +78,7 @@ function formatTimestamp(isoString) {
 
     try {
         const date = new Date(isoString);
+        if (isNaN(date.getTime())) return '—';
         return date.toLocaleTimeString();
     } catch {
         return '—';
@@ -52,7 +86,7 @@ function formatTimestamp(isoString) {
 }
 
 function formatMemory(usedMB, maxMB) {
-    if (!Number.isFinite(usedMB) || !Number.isFinite(maxMB)) return '—';
+    if (!Number.isFinite(usedMB) || !Number.isFinite(maxMB) || maxMB === 0) return '—';
 
     const usedGB = (usedMB / 1024).toFixed(2);
     const maxGB = (maxMB / 1024).toFixed(2);
@@ -66,7 +100,17 @@ function safeSetText(id, value) {
 
 function safeSetWidth(id, percent) {
     const el = document.getElementById(id);
-    if (el) el.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+    if (el && Number.isFinite(percent)) {
+        el.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+    }
+}
+
+function setStatus(state, text) {
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+
+    if (statusDot) statusDot.className = `status-dot ${state}`;
+    if (statusText) statusText.textContent = text;
 }
 
 function updateDashboard(data) {
@@ -91,21 +135,9 @@ function updateDashboard(data) {
     safeSetText('cpuUsage', Number.isFinite(cpuPercent) ? `${cpuPercent.toFixed(1)}%` : '—');
     safeSetWidth('cpuBar', cpuPercent);
 
-    const statusDot = document.getElementById('statusDot');
-    const statusText = document.getElementById('statusText');
-    if (statusDot && statusText) {
-        statusDot.className = 'status-dot online';
-        statusText.textContent = 'Online';
-    }
-}
-
-function setOfflineStatus() {
-    const statusDot = document.getElementById('statusDot');
-    const statusText = document.getElementById('statusText');
-    if (statusDot && statusText) {
-        statusDot.className = 'status-dot offline';
-        statusText.textContent = 'Offline';
-    }
+    setStatus('online', 'Online');
+    retryCount = 0;
+    lastSuccessfulFetch = Date.now();
 }
 
 async function fetchStatus() {
@@ -121,35 +153,68 @@ async function fetchStatus() {
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+            const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
+            console.error('Fetch error:', error.message);
+            handleFetchError(error.message);
+            return;
         }
 
         const contentType = response.headers.get('content-type') || '';
         if (!contentType.includes('application/json')) {
-            throw new Error('Invalid content type');
+            const error = new Error('Server returned non-JSON response');
+            console.error('Fetch error:', error.message);
+            handleFetchError(error.message);
+            return;
         }
 
-        const data = await response.json();
+        let data;
+        try {
+            data = await response.json();
+        } catch (parseError) {
+            const error = new Error('Invalid JSON response from server');
+            console.error('Fetch error:', error.message);
+            handleFetchError(error.message);
+            return;
+        }
+
         updateDashboard(data);
+
     } catch (error) {
         clearTimeout(timeoutId);
 
-        if (error.name === 'AbortError') {
-            console.error('Fetch timeout:', error);
-        } else {
-            console.error('Error fetching status:', error);
+        const errorMessage = error.name === 'AbortError'
+            ? 'Request timeout'
+            : error.message || 'Connection failed';
+
+        console.error('Fetch error:', errorMessage);
+        handleFetchError(errorMessage);
+    }
+}
+
+function handleFetchError(errorMessage) {
+    if (retryCount < MAX_RETRIES) {
+        retryCount++;
+        setStatus('reconnecting', `Reconnecting (${retryCount}/${MAX_RETRIES})...`);
+
+        if (retryCount === 1) {
+            showToast(`Connection lost: ${errorMessage}`, 'warning');
         }
 
-        setOfflineStatus();
+        setTimeout(() => {
+            void fetchStatus();
+        }, RETRY_DELAY);
+    } else {
+        setStatus('offline', 'Offline');
+        showToast(`Connection failed after ${MAX_RETRIES} attempts`, 'error');
     }
 }
 
 function startPolling() {
     stopPolling();
-    fetchStatus();
+    void fetchStatus();
     intervalId = setInterval(() => {
         if (isPageVisible) {
-            fetchStatus();
+            void fetchStatus();
         }
     }, REFRESH_INTERVAL);
 }
@@ -162,14 +227,33 @@ function stopPolling() {
 }
 
 document.addEventListener('visibilitychange', () => {
+    const wasHidden = !isPageVisible;
     isPageVisible = !document.hidden;
-    if (isPageVisible) {
-        fetchStatus();
+
+    if (isPageVisible && wasHidden) {
+        const timeSinceLastFetch = lastSuccessfulFetch
+            ? Date.now() - lastSuccessfulFetch
+            : Infinity;
+
+        if (timeSinceLastFetch > REFRESH_INTERVAL) {
+            void fetchStatus();
+        }
     }
 });
 
 window.addEventListener('beforeunload', () => {
     stopPolling();
+});
+
+window.addEventListener('online', () => {
+    showToast('Network connection restored', 'success', 3000);
+    retryCount = 0;
+    void fetchStatus();
+});
+
+window.addEventListener('offline', () => {
+    setStatus('offline', 'No Internet');
+    showToast('Network connection lost', 'error');
 });
 
 startPolling();
