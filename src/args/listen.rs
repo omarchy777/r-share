@@ -63,7 +63,7 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool, local: bool)
     let mut session = relay_client.listen(my_fingerprint.clone()).await?;
 
     println!(
-        "{} Sender connected! Session: {}",
+        "{} Session: {}",
         "✓".bright_green(),
         session.session_id().bright_cyan()
     );

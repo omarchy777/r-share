@@ -59,7 +59,7 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result
     );
     println!("   To:   {}", to.bright_white().bold());
     println!(
-        "   Key:  {}",
+        "   Key:  {}...",
         &recipient.public_key[..16].bright_cyan().dimmed()
     );
     println!();
@@ -73,12 +73,6 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result
         &file_hash_hex[..KEY_FINGERPRINT_DISPLAY_LEN]
             .bright_cyan()
             .dimmed()
-    );
-
-    println!(
-        "{} File hash: {}...",
-        "✓".bright_green(),
-        &file_hash_hex[..16].bright_cyan().dimmed()
     );
     println!();
 
@@ -117,7 +111,7 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result
         .await?;
 
     println!(
-        "{} Receiver connected! Session: {}",
+        "{} Session: {}",
         "✓".bright_green(),
         session.session_id().bright_cyan()
     );
