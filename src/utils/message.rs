@@ -57,5 +57,5 @@ pub fn show_welcome() {
         }
     }
 
-    println!("\n📖 Docs: https://github.com/ronakgh97/r-share");
+    println!("\n📖   Docs: https://github.com/ronakgh97/r-share");
 }

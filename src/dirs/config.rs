@@ -23,12 +23,6 @@ pub struct ServerConfig {
     pub socket_host: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TrustedContact {
-    pub name: String,
-    pub public_key: String,
-}
-
 impl Default for Config {
     fn default() -> Self {
         Config {
