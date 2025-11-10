@@ -10,6 +10,8 @@ public class ListenResponse {
     private String fileHash;
     private int socketPort;
     private String message;
+    private String senderEphemeralKey; // X25519 public key from sender (hex-encoded)
+    private String receiverEphemeralKey; // X25519 public key from receiver (hex-encoded)
 
     // Constructors
     public ListenResponse() {
@@ -17,7 +19,8 @@ public class ListenResponse {
 
     public ListenResponse(String status, String sessionId, String senderFp,
             String filename, long fileSize, String signature,
-            String fileHash, int socketPort, String message) {
+            String fileHash, int socketPort, String message,
+            String senderEphemeralKey, String receiverEphemeralKey) {
         this.status = status;
         this.sessionId = sessionId;
         this.senderFp = senderFp;
@@ -27,6 +30,8 @@ public class ListenResponse {
         this.fileHash = fileHash;
         this.socketPort = socketPort;
         this.message = message;
+        this.senderEphemeralKey = senderEphemeralKey;
+        this.receiverEphemeralKey = receiverEphemeralKey;
     }
 
     // Getters
@@ -66,6 +71,14 @@ public class ListenResponse {
         return message;
     }
 
+    public String getSenderEphemeralKey() {
+        return senderEphemeralKey;
+    }
+
+    public String getReceiverEphemeralKey() {
+        return receiverEphemeralKey;
+    }
+
     // Setters
     public void setStatus(String status) {
         this.status = status;
@@ -101,5 +114,13 @@ public class ListenResponse {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public void setSenderEphemeralKey(String senderEphemeralKey) {
+        this.senderEphemeralKey = senderEphemeralKey;
+    }
+
+    public void setReceiverEphemeralKey(String receiverEphemeralKey) {
+        this.receiverEphemeralKey = receiverEphemeralKey;
     }
 }

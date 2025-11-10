@@ -13,13 +13,16 @@ public class Session {
     private long expiresAt;
     private static final int SOCKET_PORT = 10000; 
     private static final long SESSION_TIMEOUT_MS = 300_000; // 5 minutes
+    private String senderEphemeralKey; // X25519 public key from sender
+    private String receiverEphemeralKey; // X25519 public key from receiver
 
     public Session() {
     }
 
     // Constructor
     public Session(String sessionId, String senderFp, String receiverFp,
-            String filename, long fileSize, String signature, String fileHash) {
+            String filename, long fileSize, String signature, String fileHash,
+            String senderEphemeralKey) {
         this.sessionId = sessionId;
         this.senderFp = senderFp;
         this.receiverFp = receiverFp;
@@ -27,6 +30,7 @@ public class Session {
         this.fileSize = fileSize;
         this.signature = signature;
         this.fileHash = fileHash;
+        this.senderEphemeralKey = senderEphemeralKey;
         this.createdAt = System.currentTimeMillis();
         this.expiresAt = this.createdAt + SESSION_TIMEOUT_MS;
         this.status = "waiting_receiver";
@@ -59,6 +63,22 @@ public class Session {
 
     public String getFileHash() {
         return fileHash;
+    }
+
+    public String getSenderEphemeralKey() {
+        return senderEphemeralKey;
+    }
+
+    public void setSenderEphemeralKey(String senderEphemeralKey) {
+        this.senderEphemeralKey = senderEphemeralKey;
+    }
+
+    public String getReceiverEphemeralKey() {
+        return receiverEphemeralKey;
+    }
+
+    public void setReceiverEphemeralKey(String receiverEphemeralKey) {
+        this.receiverEphemeralKey = receiverEphemeralKey;
     }
 
     public String getStatus() {

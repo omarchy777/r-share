@@ -7,19 +7,21 @@ public class ServeRequest {
     private long fileSize;
     private String signature;
     private String fileHash;
+    private String senderEphemeralKey; // X25519 public key (hex-encoded, 64 chars)
 
     // Constructors
     public ServeRequest() {
     }
 
     public ServeRequest(String senderFp, String receiverFp, String filename,
-                        long fileSize, String signature, String fileHash) {
+                        long fileSize, String signature, String fileHash, String senderEphemeralKey) {
         this.senderFp = senderFp;
         this.receiverFp = receiverFp;
         this.filename = filename;
         this.fileSize = fileSize;
         this.signature = signature;
         this.fileHash = fileHash;
+        this.senderEphemeralKey = senderEphemeralKey;
     }
 
     // Getters
@@ -47,6 +49,10 @@ public class ServeRequest {
         return fileHash;
     }
 
+    public String getSenderEphemeralKey() {
+        return senderEphemeralKey;
+    }
+
     // Setters
     public void setSenderFp(String senderFp) {
         this.senderFp = senderFp;
@@ -70,5 +76,9 @@ public class ServeRequest {
 
     public void setFileHash(String fileHash) {
         this.fileHash = fileHash;
+    }
+
+    public void setSenderEphemeralKey(String senderEphemeralKey) {
+        this.senderEphemeralKey = senderEphemeralKey;
     }
 }

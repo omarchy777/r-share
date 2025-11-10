@@ -6,18 +6,20 @@ public class ServeResponse {
     private int socketPort;
     private String message;
     private long expiresIn;
+    private String receiverEphemeralKey; // X25519 public key from receiver
 
     // Constructors
     public ServeResponse() {
     }
 
     public ServeResponse(String status, String sessionId, int socketPort,
-                         String message, long expiresIn) {
+            String message, long expiresIn, String receiverEphemeralKey) {
         this.status = status;
         this.sessionId = sessionId;
         this.socketPort = socketPort;
         this.message = message;
         this.expiresIn = expiresIn;
+        this.receiverEphemeralKey = receiverEphemeralKey;
     }
 
     // Getters
@@ -41,6 +43,10 @@ public class ServeResponse {
         return expiresIn;
     }
 
+    public String getReceiverEphemeralKey() {
+        return receiverEphemeralKey;
+    }
+
     // Setters
     public void setStatus(String status) {
         this.status = status;
@@ -60,5 +66,9 @@ public class ServeResponse {
 
     public void setExpiresIn(long expiresIn) {
         this.expiresIn = expiresIn;
+    }
+
+    public void setReceiverEphemeralKey(String receiverEphemeralKey) {
+        this.receiverEphemeralKey = receiverEphemeralKey;
     }
 }
