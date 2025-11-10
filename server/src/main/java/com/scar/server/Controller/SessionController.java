@@ -61,31 +61,31 @@ public class SessionController {
         // Validate
         if (request.getSenderFp() == null || request.getSenderFp().isEmpty()) {
             result.setResult(ResponseEntity.badRequest().body(
-                    new ServeResponse("error", null, 0, "Missing sender fingerprint", 0)));
+                    new ServeResponse("error", null, 0, "Missing sender fingerprint", 0, null)));
             return result;
         }
 
         if (request.getReceiverFp() == null || request.getReceiverFp().isEmpty()) {
             result.setResult(ResponseEntity.badRequest().body(
-                    new ServeResponse("error", null, 0, "Missing receiver fingerprint", 0)));
+                    new ServeResponse("error", null, 0, "Missing receiver fingerprint", 0, null)));
             return result;
         }
 
         if (request.getSignature() == null || request.getSignature().isEmpty()) {
             result.setResult(ResponseEntity.badRequest().body(
-                    new ServeResponse("error", null, 0, "Missing signature", 0)));
+                    new ServeResponse("error", null, 0, "Missing signature", 0, null)));
             return result;
         }
 
         if (request.getFileHash() == null || request.getFileHash().isEmpty()) {
             result.setResult(ResponseEntity.badRequest().body(
-                    new ServeResponse("error", null, 0, "Missing file hash", 0)));
+                    new ServeResponse("error", null, 0, "Missing file hash", 0, null)));
             return result;
         }
 
         if (request.getFileSize() < 0) {
             result.setResult(ResponseEntity.badRequest().body(
-                    new ServeResponse("error", null, 0, "Invalid file size", 0)));
+                    new ServeResponse("error", null, 0, "Invalid file size", 0, null)));
             return result;
         }
 
@@ -100,7 +100,8 @@ public class SessionController {
                 request.getFilename(),
                 request.getFileSize(),
                 request.getSignature(),
-                request.getFileHash()).thenAccept(session -> {
+                request.getFileHash(),
+                request.getSenderEphemeralKey()).thenAccept(session -> {
                     long expiresIn = session.getExpiresAt() - System.currentTimeMillis();
                     result.setResult(ResponseEntity.ok(
                             new ServeResponse(
@@ -108,14 +109,16 @@ public class SessionController {
                                     session.getSessionId(),
                                     session.getSocketPort(),
                                     "Receiver accepted, Proceeding to socket transfer.",
-                                    expiresIn)));
+                                    expiresIn,
+                                    session.getReceiverEphemeralKey())));
                 }).exceptionally(ex -> {
                     // Timeout or error
                     log.error("Serve failed: {}", ex.getMessage());
                     result.setResult(ResponseEntity.status(408).body(
                             new ServeResponse("timeout", null, 0,
                                     "Receiver didn't respond: " + ex.getMessage(),
-                                    0)));
+                                    0,
+                                    null)));
                     return null;
                 });
 
@@ -139,15 +142,16 @@ public class SessionController {
         // timeout
 
         // Validate
-        if (request.getReceiverFp() == null || request.getReceiverFp().isEmpty()) {
+        if (request.getReceiverFp() == null || request.getReceiverFp().isEmpty() ||
+                request.getReceiverEphemeralKey() == null || request.getReceiverEphemeralKey().isEmpty()) {
             result.setResult(ResponseEntity.badRequest().body(
                     new ListenResponse("error", null, null, null, 0, null, null, 0,
-                            "Missing receiver fingerprint")));
+                            "Missing receiver fingerprint or ephemeral key", null, null)));
             return result;
         }
 
         // Call blocking service
-        sessionService.listenAndWait(request.getReceiverFp())
+        sessionService.listenAndWait(request.getReceiverFp(), request.getReceiverEphemeralKey())
                 .thenAccept(session -> {
                     // Alice initiated! Return to Bob
                     long expiresIn = session.getExpiresAt() - System.currentTimeMillis();
@@ -163,12 +167,14 @@ public class SessionController {
                                     session.getSocketPort(),
                                     "Incoming transfer from " + session
                                             .getSenderFp()
-                                            .substring(0, 8))));
+                                            .substring(0, 8),
+                                    session.getSenderEphemeralKey(),
+                                    session.getReceiverEphemeralKey())));
                 }).exceptionally(ex -> {
                     log.error("Listen failed: {}", ex.getMessage());
                     result.setResult(ResponseEntity.status(408).body(
                             new ListenResponse("timeout", null, null, null, 0, null, null, 0,
-                                    "No sender found: " + ex.getMessage())));
+                                    "No sender found: " + ex.getMessage(), null, null)));
                     return null;
                 });
 
