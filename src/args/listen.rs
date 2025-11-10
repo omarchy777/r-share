@@ -1,5 +1,5 @@
 use crate::config::constants::*;
-use crate::crypto::signing;
+use crate::crypto::{encryption, key_exchange, signing};
 use crate::dirs::{config, contacts, keys};
 use crate::server::RelayClient;
 use crate::utils::error::{Error, Result};
@@ -58,9 +58,25 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool, local: bool)
         )
     };
 
+    // Generate ephemeral X25519 keypair for this transfer
+    println!(
+        "{}",
+        " Generating ephemeral encryption keys...".bright_cyan()
+    );
+    let ephemeral_keypair = crate::crypto::key_exchange::EphemeralKeyPair::generate();
+    let receiver_ephemeral_hex = ephemeral_keypair.public_key_hex();
+    println!(
+        "{}  Ephemeral key: {}...",
+        "✓".bright_green(),
+        &receiver_ephemeral_hex[..16].bright_cyan().dimmed()
+    );
+    println!();    
+
     // Join transfer session (blocks until sender connects)
     println!("{}", " Waiting for sender to connect...".yellow());
-    let mut session = relay_client.listen(my_fingerprint.clone()).await?;
+    let mut session = relay_client
+        .listen(my_fingerprint.clone(), receiver_ephemeral_hex)
+        .await?;
 
     println!(
         "{} Session: {}",
@@ -149,6 +165,21 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool, local: bool)
         &file_hash_from_sender[..16].bright_cyan().dimmed()
     );
 
+    // Derive encryption key from ephemeral keys
+    let sender_ephemeral_hex = session
+        .sender_ephemeral_key
+        .as_ref()
+        .ok_or_else(|| Error::CryptoError("Sender ephemeral key not found".into()))?;
+
+    println!();
+    println!("{}", " Deriving encryption key...".bright_cyan());
+    let aes_key = key_exchange::perform_key_exchange(
+        ephemeral_keypair.secret,
+        sender_ephemeral_hex,
+        session.session_id(),
+    )?;
+    println!("{}  Encryption key derived", "✓".bright_green());
+
     println!("{} Incoming file transfer", "✓".bright_green());
     println!("   File: {}", filename.bright_yellow());
     println!(
@@ -157,9 +188,9 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool, local: bool)
         filesize as f64 / (1024.0 * 1024.0)
     );
     println!();
-    println!("{} Receiving file...", "◆".bright_cyan());
+    println!("{} Receiving and decrypting file...", "◆".bright_cyan());
 
-    // Receive file data with progress bar
+    // Receive encrypted file data with progress bar
     let file_path = download_path.join(&filename);
     let mut file_writer = File::create(&file_path).await?;
 
@@ -171,12 +202,13 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool, local: bool)
             .progress_chars(PROGRESS_BAR_CHARS),
     );
 
-    let mut buffer = vec![0u8; FILE_CHUNK_SIZE];
     let mut total_received = 0u64;
 
+    // Read encrypted chunks: [4B size][encrypted data]
     while total_received < filesize {
-        let n = session.read(&mut buffer).await?;
-        if n == 0 {
+        // Read 4-byte size prefix
+        let mut size_buffer = [0u8; 4];
+        if let Err(e) = session.read_exact(&mut size_buffer).await {
             println!();
             println!(
                 "{} Connection closed early! Received {}/{} bytes ({:.1}%)",
@@ -191,15 +223,43 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool, local: bool)
             tokio::fs::remove_file(&file_path).await?;
             println!("{} Partial file deleted", "✓".bright_red());
 
-            // Note: Cannot send ERROR signal here as connection is already closed
-
-            return Err(Error::InvalidInput(
-                "Transfer interrupted - connection closed early".into(),
-            ));
+            return Err(Error::InvalidInput(format!(
+                "Transfer interrupted - connection closed before size prefix: {}",
+                e
+            )));
         }
 
-        file_writer.write_all(&buffer[..n]).await?;
-        total_received += n as u64;
+        let chunk_size = u32::from_be_bytes(size_buffer) as usize;
+
+        // Read encrypted chunk
+        let mut encrypted_buffer = vec![0u8; chunk_size];
+        if let Err(e) = session.read_exact(&mut encrypted_buffer).await {
+            println!();
+            println!(
+                "{} Connection closed early! Received {}/{} bytes ({:.1}%)",
+                "✗".bright_red().bold(),
+                total_received,
+                filesize,
+                (total_received as f64 / filesize as f64) * 100.0
+            );
+
+            // Clean up partial file immediately
+            drop(file_writer);
+            tokio::fs::remove_file(&file_path).await?;
+            println!("{} Partial file deleted", "✓".bright_red());
+
+            return Err(Error::InvalidInput(format!(
+                "Transfer interrupted - connection closed during chunk: {}",
+                e
+            )));
+        }
+
+        // Decrypt the chunk
+        let plaintext = encryption::decrypt_chunk(&aes_key, &encrypted_buffer)?;
+
+        // Write decrypted data to file
+        file_writer.write_all(&plaintext).await?;
+        total_received += plaintext.len() as u64;
         pb.set_position(total_received);
     }
 

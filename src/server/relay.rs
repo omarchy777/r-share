@@ -33,12 +33,16 @@ struct ServeRequest {
     signature: String,
     #[serde(rename = "fileHash")]
     file_hash: String,
+    #[serde(rename = "senderEphemeralKey")]
+    sender_ephemeral_key: String,
 }
 
 #[derive(Debug, Serialize)]
 struct ListenRequest {
     #[serde(rename = "receiverFp")]
     receiver_fingerprint: String,
+    #[serde(rename = "receiverEphemeralKey")]
+    receiver_ephemeral_key: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -50,6 +54,8 @@ struct ServeResponse {
     #[serde(rename = "socketPort")]
     socket_port: u16,
     message: String,
+    #[serde(rename = "receiverEphemeralKey")]
+    receiver_ephemeral_key: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -57,18 +63,22 @@ struct ServeResponse {
 struct ListenResponse {
     status: String,
     #[serde(rename = "sessionId")]
-    session_id: String,
+    session_id: Option<String>,
     #[serde(rename = "senderFp")]
-    sender_fp: String,
-    filename: String,
+    sender_fp: Option<String>,
+    filename: Option<String>,
     #[serde(rename = "fileSize")]
-    file_size: u64,
-    signature: String,
+    file_size: Option<u64>,
+    signature: Option<String>,
     #[serde(rename = "fileHash")]
-    file_hash: String,
+    file_hash: Option<String>,
     #[serde(rename = "socketPort")]
-    socket_port: u16,
+    socket_port: Option<u16>,
     message: String,
+    #[serde(rename = "senderEphemeralKey")]
+    sender_ephemeral_key: Option<String>,
+    #[serde(rename = "receiverEphemeralKey")]
+    receiver_ephemeral_key: Option<String>,
 }
 
 /// Active transfer session with socket connection
@@ -83,6 +93,8 @@ pub struct TransferSession {
     pub signature: Option<String>,
     pub sender_fp: Option<String>,
     pub file_hash: Option<String>,
+    pub sender_ephemeral_key: Option<String>,
+    pub receiver_ephemeral_key: Option<String>,
 }
 
 impl TransferSession {
@@ -92,6 +104,12 @@ impl TransferSession {
             .read(buf)
             .await
             .map_err(|e| Error::NetworkError(format!("Failed to read from socket: {}", e)))
+    }
+
+    /// Read exact amount of data from the socket connection
+    pub async fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
+        self.socket.read_exact(buf).await?;
+        Ok(())
     }
 
     /// Write data to the socket connection
@@ -157,6 +175,7 @@ impl RelayClient {
         file_size: u64,
         signature: String,
         file_hash: String,
+        sender_ephemeral_key: String,
     ) -> Result<TransferSession> {
         // Call HTTP API to create session
         let client = reqwest::Client::new();
@@ -169,6 +188,7 @@ impl RelayClient {
             file_size,
             signature,
             file_hash,
+            sender_ephemeral_key,
         };
 
         let response = client
@@ -206,17 +226,24 @@ impl RelayClient {
             signature: None,
             sender_fp: None,
             file_hash: None,
+            sender_ephemeral_key: None,
+            receiver_ephemeral_key: session.receiver_ephemeral_key,
         })
     }
 
     /// Join a file transfer as receiver (blocks until sender connects)
-    pub async fn listen(&self, receiver_fingerprint: String) -> Result<TransferSession> {
+    pub async fn listen(
+        &self,
+        receiver_fingerprint: String,
+        receiver_ephemeral_key: String,
+    ) -> Result<TransferSession> {
         // Call HTTP API to join session
         let client = reqwest::Client::new();
         let url = format!("{}/api/relay/listen", self.http_base_url);
 
         let request = ListenRequest {
             receiver_fingerprint,
+            receiver_ephemeral_key,
         };
 
         let response = client
@@ -240,20 +267,48 @@ impl RelayClient {
             .await
             .map_err(|e| Error::NetworkError(format!("Failed to parse session response: {}", e)))?;
 
+        // Extract required fields from response
+        let session_id = session.session_id.ok_or_else(|| {
+            Error::NetworkError("Server did not return session_id".into())
+        })?;
+        let filename = session.filename.ok_or_else(|| {
+            Error::NetworkError("Server did not return filename".into())
+        })?;
+        let file_size = session.file_size.ok_or_else(|| {
+            Error::NetworkError("Server did not return file_size".into())
+        })?;
+        let signature = session.signature.ok_or_else(|| {
+            Error::NetworkError("Server did not return signature".into())
+        })?;
+        let sender_fp = session.sender_fp.ok_or_else(|| {
+            Error::NetworkError("Server did not return sender_fp".into())
+        })?;
+        let file_hash = session.file_hash.ok_or_else(|| {
+            Error::NetworkError("Server did not return file_hash".into())
+        })?;
+        let sender_ephemeral_key = session.sender_ephemeral_key.ok_or_else(|| {
+            Error::NetworkError("Server did not return sender ephemeral key".into())
+        })?;
+        let receiver_ephemeral_key = session.receiver_ephemeral_key.ok_or_else(|| {
+            Error::NetworkError("Server did not return receiver ephemeral key".into())
+        })?;
+
         // Connect to socket server
         let socket = self
-            .connect_socket(&session.session_id, TransferRole::Receiver)
+            .connect_socket(&session_id, TransferRole::Receiver)
             .await?;
 
         Ok(TransferSession {
-            session_id: session.session_id,
+            session_id,
             role: TransferRole::Receiver,
             socket,
-            filename: Some(session.filename),
-            file_size: Some(session.file_size),
-            signature: Some(session.signature),
-            sender_fp: Some(session.sender_fp),
-            file_hash: Some(session.file_hash),
+            filename: Some(filename),
+            file_size: Some(file_size),
+            signature: Some(signature),
+            sender_fp: Some(sender_fp),
+            file_hash: Some(file_hash),
+            sender_ephemeral_key: Some(sender_ephemeral_key),
+            receiver_ephemeral_key: Some(receiver_ephemeral_key),
         })
     }
 

@@ -1,5 +1,5 @@
 use crate::config::constants::*;
-use crate::crypto::signing;
+use crate::crypto::{encryption, key_exchange, signing};
 use crate::dirs::{config, contacts, keys};
 use crate::server::RelayClient;
 use crate::utils::error::{Error, Result};
@@ -96,6 +96,20 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result
     let metadata_signature = signing::sign_data(&signing_key, &metadata_msg)?;
     let signature_hex = hex::encode(metadata_signature.to_bytes());
 
+    // Generate ephemeral X25519 keypair for this transfer
+    println!(
+        "{}",
+        " Generating ephemeral encryption keys...".bright_cyan()
+    );
+    let ephemeral_keypair = key_exchange::EphemeralKeyPair::generate();
+    let sender_ephemeral_hex = ephemeral_keypair.public_key_hex();
+    println!(
+        "{}  Ephemeral key: {}...",
+        "✓".bright_green(),
+        &sender_ephemeral_hex[..16].bright_cyan().dimmed()
+    );
+    println!();
+
     // Initiate transfer session (blocks until receiver connects)
     // Metadata is sent via HTTP API
     println!("{}", " Waiting for receiver to connect...".yellow());
@@ -107,6 +121,7 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result
             filesize,
             signature_hex,
             file_hash_hex,
+            sender_ephemeral_hex,
         )
         .await?;
 
@@ -117,10 +132,25 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result
     );
     println!();
 
-    // Socket now ready for binary file transfer
-    println!("{} Sending file...", "◆".bright_green());
+    // Derive encryption key from ephemeral keys
+    let receiver_ephemeral_hex = session
+        .receiver_ephemeral_key
+        .as_ref()
+        .ok_or_else(|| Error::CryptoError("Receiver ephemeral key not found".into()))?;
 
-    // Send file data with progress bar
+    println!("{}", " Deriving encryption key...".bright_cyan());
+    let aes_key = key_exchange::perform_key_exchange(
+        ephemeral_keypair.secret,
+        receiver_ephemeral_hex,
+        session.session_id(),
+    )?;
+    println!("{}  Encryption key derived", "✓".bright_green());
+    println!();
+
+    // Socket now ready for encrypted binary file transfer
+    println!("{} Encrypting and sending file...", "◆".bright_green());
+
+    // Send file data with progress bar (encrypt each chunk)
     let mut file_reader = File::open(&file).await?;
     let pb = ProgressBar::new(filesize);
     pb.set_style(
@@ -139,7 +169,14 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result
             break;
         }
 
-        session.write_all(&buffer[..n]).await?;
+        // Encrypt the chunk before sending
+        let encrypted_chunk = encryption::encrypt_chunk(&aes_key, &buffer[..n])?;
+
+        // Send encrypted chunk size (4 bytes) followed by encrypted data
+        let chunk_size = encrypted_chunk.len() as u32;
+        session.write_all(&chunk_size.to_be_bytes()).await?;
+        session.write_all(&encrypted_chunk).await?;
+
         total_sent += n as u64;
         pb.set_position(total_sent);
     }
