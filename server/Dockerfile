@@ -11,7 +11,7 @@ WORKDIR /build
 COPY .mvn/ .mvn/
 COPY mvnw pom.xml ./
 
-# Download dependencies (cached if pom.xml hasn't changed)
+# Download dependencies (cached if pom.xml hasn't changed!!)
 RUN mvn dependency:go-offline -B
 
 # Copy source code
@@ -34,7 +34,8 @@ LABEL version="1.0.0"
 RUN apk add --no-cache \
     curl \
     bash \
-    tzdata
+    tzdata \
+    netcat-openbsd
 
 # Create non-root user for security
 RUN addgroup -g 1001 rshare && \
@@ -60,8 +61,9 @@ EXPOSE 8080 10000
 
 # Health check configuration
 # Checks every 30 seconds
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8080/actuator/health || exit 1
+HEALTHCHECK  --interval=30s --timeout=3s --start-period=30s --retries=3 \
+    CMD curl -fs http://localhost:8080/actuator/health >/dev/null && \
+    nc -z localhost 10000 || exit 1
 
 # JVM Configuration for containers
 # - UseContainerSupport: Detect container memory limits
