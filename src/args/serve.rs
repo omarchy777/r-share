@@ -153,7 +153,10 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result
     //println!();
 
     // Socket now ready for encrypted binary file transfer
-    println!("{} Encrypting and sending file...", "↗".bright_magenta().bold());
+    println!(
+        "{} Encrypting and sending file...",
+        "↗".bright_magenta().bold()
+    );
 
     // Send file data with progress bar (encrypt each chunk)
     let mut file_reader = File::open(&file).await?;

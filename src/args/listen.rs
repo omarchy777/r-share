@@ -191,7 +191,10 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool, local: bool)
         filesize as f64 / (1024.0 * 1024.0)
     );
     println!();
-    println!("{} Receiving and decrypting file...", "↙".bright_magenta().bold());
+    println!(
+        "{} Receiving and decrypting file...",
+        "↙".bright_magenta().bold()
+    );
 
     // Receive encrypted file data with progress bar
     let file_path = download_path.join(&filename);
