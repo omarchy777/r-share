@@ -225,7 +225,7 @@ public class SocketSessionRegistry {
         }
 
         if (transfer.senderAcked && transfer.receiverAcked) {
-            log.info("Both clients ACK'd! Enabling relay mode | Session: {}", sessionId.substring(0, 8));
+            log.info("Both clients ACK'd! [START RELAY] | Session: {}", sessionId.substring(0, 8));
 
             // Enable paired mode on both handlers
             if (transfer.senderHandler instanceof FileTransferHandler) {

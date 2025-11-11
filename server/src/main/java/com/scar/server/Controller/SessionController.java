@@ -220,15 +220,17 @@ public class SessionController {
             log.debug("Could not get CPU usage: {}", e.getMessage());
         }
 
+        int pendingSessions = sessionService.getPendingHttpSessionCount() + socketSessionRegistry.getActiveSessionCount();
+
         // Build status object
         Status status = new Status.Builder()
                 .timestamp(Instant.now().toString())
-                .serverVersion("0.1.0-BETA")
+                .serverVersion("1.0.0-BETA")
                 .uptimeSeconds(socketSessionRegistry.getUptimeSeconds())
                 .totalBandwidthGB(totalGB)
                 .totalBandwidthMB(totalMB)
                 .activeSessions(socketSessionRegistry.getActiveSessionCount())
-                .pendingSessions(socketSessionRegistry.getPendingSessionCount())
+                .pendingSessions(pendingSessions)
                 .totalSessionsCompleted(socketSessionRegistry.getTotalSessionsCompleted())
                 .totalSessionsFailed(socketSessionRegistry.getTotalSessionsFailed())
                 .averageTransferSpeedMBps(socketSessionRegistry.getAverageTransferSpeedMBps())

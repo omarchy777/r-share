@@ -42,7 +42,8 @@ public class SessionService {
         }
 
         String sessionId = UUID.randomUUID().toString();
-        Session session = new Session(sessionId, senderFp, receiverFp, filename, fileSize, signature, fileHash, senderEphemeralKey);
+        Session session = new Session(sessionId, senderFp, receiverFp, filename, fileSize, signature, fileHash,
+                senderEphemeralKey);
 
         sessions.put(sessionId, session);
 
@@ -57,7 +58,7 @@ public class SessionService {
             log.info("Listener: {}{}{} already waiting! Matching: {}{}{} immediately",
                     red, receiverFp.substring(0, 8), reset,
                     blue, senderFp.substring(0, 8), reset);
-            
+
             // CRITICAL!! Get receiver's ephemeral key from placeholder session
             String placeholderSessionId = "waiting_" + receiverFp;
             Session placeholderSession = sessions.get(placeholderSessionId);
@@ -65,7 +66,7 @@ public class SessionService {
                 session.setReceiverEphemeralKey(placeholderSession.getReceiverEphemeralKey());
                 sessions.remove(placeholderSessionId); // Clean up placeholder
             }
-            
+
             // Listen is waiting! Match immediately
             session.setStatus("matched");
             Waiting.complete(session); // Wake up Listener
@@ -130,23 +131,23 @@ public class SessionService {
 
         // Sender not initiated yet, Listener waits
         log.info("Sender not ready yet, Listener: {}{}{} blocking...", red, receiverFp.substring(0, 8), reset);
-        
+
         // CRITICAL!! Create a placeholder session to store receiver's ephemeral key
         // This will be updated when sender arrives
         String placeholderSessionId = "waiting_" + receiverFp;
         Session placeholderSession = new Session(
-            placeholderSessionId,
-            null, // sender not known yet
-            receiverFp,
-            null, // filename not known yet
-            0,
-            null, // signature not known yet
-            null, // fileHash not known yet
-            null  // sender ephemeral key not known yet
+                placeholderSessionId,
+                null, // sender not known yet
+                receiverFp,
+                null, // filename not known yet
+                0,
+                null, // signature not known yet
+                null, // fileHash not known yet
+                null // sender ephemeral key not known yet
         );
         placeholderSession.setReceiverEphemeralKey(receiverEphemeralKey);
         placeholderSession.setStatus("waiting_sender");
-        
+
         CompletableFuture<Session> future = new CompletableFuture<>();
         waitingReceivers.put(receiverFp, future);
 
@@ -183,4 +184,9 @@ public class SessionService {
             log.info("Completed Session: {}{}{}", yellow, sessionId.substring(0, 8), reset);
         }
     }
+
+    public int getPendingHttpSessionCount() {
+        return waitingSenders.size() + waitingReceivers.size();
+    }
+
 }
