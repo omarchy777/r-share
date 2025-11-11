@@ -1,8 +1,6 @@
 #!/usr/bin/env just --justfile
 
-set windows-shell := ["powershell.exe"]
-
-# Clean build
+# Clean build (for release)
 clean-build:
     cargo clean
     cargo build --release
@@ -11,3 +9,8 @@ clean-build:
 clean-install:
     remove-Item "C:\Users\ronak\.rshare"
     cargo install --path .
+
+clean-docker:
+    docker ps -a -q --filter "name=rshare" | xargs -r docker rm -f
+    docker images -a --filter=reference='*rshare*' -q | xargs -r docker rmi -f
+    docker-compose up -d --build
