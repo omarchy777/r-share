@@ -1,3 +1,4 @@
+use crate::config::KEY_FINGERPRINT_DISPLAY_LEN;
 use crate::dirs::config::Config;
 use crate::dirs::{config, contacts, keys};
 use crate::utils::error::Result;
@@ -5,7 +6,7 @@ use colored::Colorize;
 use std::path::PathBuf;
 
 pub async fn run(key_path: Option<PathBuf>, force: bool) -> Result<()> {
-    println!("{}", " Initializing rshare...\n".bright_cyan().bold());
+    println!("{}", "Initializing rshare...\n".bright_cyan().bold());
 
     // Determine keys path (CLI arg or default)
     let keys_path = key_path.unwrap_or_else(|| keys::get_default_keys_dir().unwrap());
@@ -69,6 +70,11 @@ pub async fn run(key_path: Option<PathBuf>, force: bool) -> Result<()> {
     // Add self to trust
     println!("{}", " Adding self to trust".bright_cyan());
     let mut contacts = contacts::load_contacts()?;
+
+    if force && contacts.contacts.contains_key("self") {
+        contacts.remove("self")?;
+    }
+
     contacts.add("self".to_string(), hex::encode(&public_key.to_bytes()))?;
     contacts::save_contacts(&contacts)?;
 
@@ -84,8 +90,8 @@ pub async fn run(key_path: Option<PathBuf>, force: bool) -> Result<()> {
 
     println!("\n{}", " Fingerprints:".bright_cyan());
     println!(
-        "   Private: {}",
-        hex::encode(&private_key.to_bytes()[..12]).bright_white()
+        "   Private: {}...",
+        hex::encode(&private_key.to_bytes()[..KEY_FINGERPRINT_DISPLAY_LEN]).bright_white()
     );
     println!(
         "   Public:  {}",
