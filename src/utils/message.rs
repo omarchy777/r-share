@@ -25,17 +25,17 @@ pub async fn show_welcome() -> Result<()> {
     println!("\n A Rust-based CLI File Share Tool");
     println!("   Version: {}\n", APP_VERSION.bright_green().bold());
 
-    let client = RelayClient::new(
-        "http://localhost:8080".to_string(),
-        "localhost".to_string(),
-        10000,
-    );
-
-    client.health_check().await?;
-
     // Try to load config
     match config::load_config() {
         Ok(loaded_config) => {
+            let client = RelayClient::new(
+                loaded_config.server.http_url.clone(),
+                loaded_config.server.socket_host.clone(),
+                loaded_config.server.socket_port,
+            );
+
+            client.health_check().await?;
+
             // Config exists, check keys
             if keys_exist_at(&loaded_config.path.keys_path) {
                 match keys::load_keys_from(&loaded_config.path.keys_path) {
