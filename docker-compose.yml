@@ -3,6 +3,7 @@ services:
   # R-Share Relay Server
 
   rshare-server:
+    image: r-share/relay-server:latest
     build:
       context: ./server
       dockerfile: Dockerfile
@@ -26,11 +27,7 @@ services:
       - SERVER_PORT=8080
       - SERVER_SOCKET_PORT=10000
       
-      # Session configuration
-      - RSHARE_SESSION_TIMEOUT_MS=30000
-      - RSHARE_SESSION_CLEANUP_INTERVAL_MS=60000
-      
-      # JVM options (optimized for 1GB RAM - Oracle Free Tier)
+      # JVM options
       - JAVA_OPTS=-Xmx768m -Xms256m -XX:+UseG1GC -XX:MaxGCPauseMillis=100
       
       # Logging

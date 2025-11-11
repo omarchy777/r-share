@@ -59,7 +59,7 @@ USER rshare
 EXPOSE 8080 10000
 
 # Health check configuration
-# Checks if HTTP API is responsive every 30 seconds
+# Checks every 30 seconds
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8080/actuator/health || exit 1
 
