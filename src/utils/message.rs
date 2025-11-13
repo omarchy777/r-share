@@ -1,7 +1,6 @@
 use crate::config::{APP_VERSION, KEY_FINGERPRINT_DISPLAY_LEN};
 use crate::dirs::keys::keys_exist_at;
 use crate::dirs::{config, keys};
-use crate::server::RelayClient;
 use crate::utils::error::Result;
 use colored::Colorize;
 use figlet_rs::FIGfont;
@@ -28,14 +27,6 @@ pub async fn show_welcome() -> Result<()> {
     // Try to load config
     match config::load_config() {
         Ok(loaded_config) => {
-            let client = RelayClient::new(
-                loaded_config.server.http_url.clone(),
-                loaded_config.server.socket_host.clone(),
-                loaded_config.server.socket_port,
-            );
-
-            client.health_check().await?;
-
             // Config exists, check keys
             if keys_exist_at(&loaded_config.path.keys_path) {
                 match keys::load_keys_from(&loaded_config.path.keys_path) {
