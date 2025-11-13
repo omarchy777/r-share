@@ -47,15 +47,15 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool, local: bool)
     // Create relay client
     let relay_client = if local {
         RelayClient::new(
-            "http://localhost:8080".to_string(),
-            "localhost".to_string(),
-            10000,
+            config.server.private_ip.clone(),
+            DEFAULT_HTTP_PORT.to_string().clone(),
+            DEFAULT_SOCKET_PORT.clone(),
         )
     } else {
         RelayClient::new(
-            config.server.http_url.clone(),
-            config.server.socket_host.clone(),
-            config.server.socket_port,
+            config.server.public_ip.clone(),
+            DEFAULT_HTTP_PORT.to_string().clone(),
+            DEFAULT_SOCKET_PORT.clone(),
         )
     };
 
