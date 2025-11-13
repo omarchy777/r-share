@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
-use rshare::args::{init, listen, serve, trust};
+use rshare::args::{health, init, listen, serve, trust};
 use rshare::cli::{Args, Commands, TrustAction};
 use rshare::utils::message::show_welcome;
 
@@ -13,6 +13,11 @@ async fn main() -> Result<()> {
             // TODO: Implement "me" command
             //trust::show_me(verbose).await?;
         }
+
+        Some(Commands::Health { local, public }) => {
+            health::run(local, public).await?;
+        }
+
         Some(Commands::Init { keys, force }) => {
             init::run(keys, force).await?;
         }

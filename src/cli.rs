@@ -23,6 +23,16 @@ pub enum Commands {
         verbose: bool,
     },
 
+    Health {
+        /// Use your own home local relay server
+        #[arg(short, long)]
+        local: bool,
+
+        /// Use the public relay server
+        #[arg(short, long)]
+        public: bool,
+    },
+
     /// Initialize and generate a public/private key
     Init {
         /// Save keys to custom path, or default to ~/.rshare/keys/
@@ -43,7 +53,7 @@ pub enum Commands {
         #[arg(short, long, conflicts_with = "code")]
         from: String,
 
-        /// For development: use local relay server
+        /// Use your own home local relay server
         #[arg(short, long)]
         local: bool,
 
@@ -61,7 +71,7 @@ pub enum Commands {
         #[arg(short, long, conflicts_with = "code")]
         to: String,
 
-        /// For development: use local relay server
+        /// Use your own home local relay server
         #[arg(short, long)]
         local: bool,
 
