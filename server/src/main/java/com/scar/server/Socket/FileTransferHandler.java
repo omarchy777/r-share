@@ -52,11 +52,9 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        if (!(msg instanceof ByteBuf)) {
+        if (!(msg instanceof ByteBuf buf)) {
             return;
         }
-
-        ByteBuf buf = (ByteBuf) msg;
 
         // First message: session_id + role handshake
         if (sessionId == null) {
@@ -232,8 +230,12 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
         int bytes = buf.readableBytes();
         transfer.bytesTransferred += bytes;
 
-        ByteBuf copy = buf.copy();
+        ByteBuf copy = buf.retain();
         target.writeAndFlush(copy);
+
+        if (transfer.bytesTransferred % (512 * 1024) == 0) {
+            target.flush();
+        }
 
         // if (transfer.bytesTransferred % 1048576 == 0) { // Log every 1MB
         // log.info("Transferred: {} MB | Session: {}",

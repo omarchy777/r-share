@@ -57,7 +57,11 @@ public class FileTransferServer {
                         })
                         .option(ChannelOption.SO_BACKLOG, backlog)
                         .childOption(ChannelOption.SO_KEEPALIVE, true)
-                        .childOption(ChannelOption.TCP_NODELAY, true);
+                        .childOption(ChannelOption.TCP_NODELAY, true)
+                        .childOption(ChannelOption.SO_SNDBUF, 2 * 1024 * 1024) // 2MB send buffer
+                        .childOption(ChannelOption.SO_RCVBUF, 2 * 1024 * 1024) // 2MB receive buffer
+                        .childOption(ChannelOption.WRITE_BUFFER_WATER_MARK,
+                                new WriteBufferWaterMark(512 * 1024, 1024 * 1024)); // 512KB low, 1MB high
 
                 ChannelFuture future = bootstrap.bind(PORT).sync();
                 log.info("Socket Server running on port {}", PORT);
