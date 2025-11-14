@@ -231,17 +231,9 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
         transfer.bytesTransferred += bytes;
 
         ByteBuf copy = buf.retain();
-        target.writeAndFlush(copy); // Flush immediately for responsive transfers
+        target.writeAndFlush(copy); // Flush immediately
 
-        // if (transfer.bytesTransferred % 1048576 == 0) { // Log every 1MB
-        // log.info("Transferred: {} MB | Session: {}",
-        // transfer.bytesTransferred / 1048576,
-        // sessionId.substring(0, 8));
-        // }
-
-        // log.info("Total bytes: {}{}{} Transferred for session: {}{}{}",
-        // cyan, transfer.bytesTransferred, reset,
-        // yellow, sessionId.substring(0, 8), reset);
+        //log.info("Total bytes: {}{}{} Transferred for session: {}{}{}", cyan, transfer.bytesTransferred, reset, yellow, sessionId.substring(0, 8), reset);
 
         buf.release();
     }
