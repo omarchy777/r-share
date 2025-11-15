@@ -59,8 +59,10 @@ public class FileTransferServer {
                         .childOption(ChannelOption.SO_KEEPALIVE, true)
                         .childOption(ChannelOption.TCP_NODELAY, true)
                         .childOption(ChannelOption.AUTO_READ, true)
+                        .childOption(ChannelOption.SO_SNDBUF, 8 * 1024 * 1024)
+                        .childOption(ChannelOption.SO_RCVBUF, 8 * 1024 * 1024)
                         .childOption(ChannelOption.WRITE_BUFFER_WATER_MARK,
-                                new WriteBufferWaterMark(512 * 1024, 4 * 1024 * 1024))
+                                new WriteBufferWaterMark(1024 * 1024, 8 * 1024 * 1024))
                         .option(ChannelOption.WRITE_SPIN_COUNT, 16);  // Batch multiple writes before flushing
 
 
