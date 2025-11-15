@@ -1,13 +1,13 @@
 // Application Constants
 
-/// Size of chunks when reading/writing files during transfer (1MB)
-pub const FILE_CHUNK_SIZE: usize = 1 * 1024 * 1024;
+/// Size of chunks when reading/writing files during transfer (2MB)
+pub const FILE_CHUNK_SIZE: usize = 2 * 1024 * 1024;
 
 /// Size of chunks when computing file hashes (4MB)
 pub const HASH_CHUNK_SIZE: usize = 4 * 1024 * 1024;
 
-/// Buffer size for network transfers (4MB)
-pub const BUFFER_SIZE: usize = 4 * 1024 * 1024;
+/// Buffer size for network transfers (8MB)
+pub const BUFFER_SIZE: usize = 8 * 1024 * 1024;
 
 /// Minimum file size allowed for transfer (10MB)
 /// Note: This is a soft limit for validation, not enforced by protocol
