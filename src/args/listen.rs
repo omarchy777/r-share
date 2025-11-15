@@ -9,7 +9,7 @@ use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::path::PathBuf;
 use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncWriteExt, BufWriter};
 
 /// Listen for incoming file transfers
 pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool, local: bool) -> Result<()> {
@@ -198,7 +198,8 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool, local: bool)
 
     // Receive encrypted file data with progress bar
     let file_path = download_path.join(&filename);
-    let mut file_writer = File::create(&file_path).await?;
+    let file_writer = File::create(&file_path).await?;
+    let mut file_writer = BufWriter::with_capacity(BUFFER_SIZE, file_writer);
 
     let pb = ProgressBar::new(filesize);
     pb.set_style(
