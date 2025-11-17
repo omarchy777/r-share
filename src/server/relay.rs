@@ -1,6 +1,5 @@
 use crate::config::{ACK_SIGNAL, BUFFER_SIZE, MAX_DONE_WAIT_MILLIS, READY_SIGNAL};
 use crate::utils::error::{Error, Result};
-use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufReader, BufWriter, ReadHalf, WriteHalf};
@@ -188,9 +187,6 @@ impl RelayClient {
                 response.status()
             )));
         }
-
-        print!("{}", "✓ Server is healthy".bright_green());
-        println!();
 
         Ok(())
     }

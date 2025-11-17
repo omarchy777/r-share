@@ -7,6 +7,7 @@ pub async fn run(server: Option<String>) -> Result<()> {
     match load_config() {
         Ok(loaded_config) => {
             println!("{} Found config file", "✓".bright_green());
+            println!();
 
             // Select relay server from config
             let server_config = Config::select_server(&loaded_config, server)?;
@@ -20,6 +21,12 @@ pub async fn run(server: Option<String>) -> Result<()> {
 
             // Check server health
             relay_client.health_check().await?;
+
+            print!(
+                "  Server: {} is healthy",
+                server_config.server_name.bright_green()
+            );
+            println!();
         }
         Err(_) => {
             println!();
