@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
-use rshare::args::{health, init, listen, serve, trust};
-use rshare::cli::{Args, Commands, TrustAction};
+use rshare::args::{health, init, listen, relays, serve, trust};
+use rshare::cli::{Args, Commands, ServerAction, TrustAction};
 use rshare::utils::message::show_welcome;
 
 #[tokio::main]
@@ -37,6 +37,19 @@ async fn main() -> Result<()> {
         }) => {
             serve::run(file, to, quiet, relay).await?;
         }
+        Some(Commands::Relay { action
+             }) => match action {
+            ServerAction::Add { name, ip, http_port, socket_port } => {
+                relays::add(name, ip, http_port, socket_port).await?;
+            }
+            ServerAction::List { verbose } => {
+                relays::list(verbose).await?;
+            }
+            ServerAction::Remove { name } => {
+                relays::remove(name).await?;
+            }
+        }
+
         Some(Commands::Trust { action }) => match action {
             TrustAction::Add { name, key } => {
                 trust::add(name, key).await?;

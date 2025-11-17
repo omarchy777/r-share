@@ -79,7 +79,7 @@ pub enum Commands {
     /// Manage relay servers
     Relay {
         #[command(subcommand)]
-        action: ServeAction,
+        action: ServerAction,
     },
 
     /// Manage trusted contacts
@@ -97,12 +97,39 @@ pub enum Commands {
 }
 
 #[derive(Subcommand)]
-pub enum ServeAction {
-    Add {},
+pub enum ServerAction {
+    /// Add a relay server
+    Add {
+        /// Server name
+        #[arg(short, long, required = true)]
+        name: String,
 
-    List {},
+        /// Server IP address or domain
+        #[arg(short, long, required = true)]
+        ip: String,
 
-    Remove {},
+        /// HTTP port (default: 8080)
+        #[arg(short, long)]
+        http_port: Option<u16>,
+
+        /// Socket port (default: 10000)
+        #[arg(short, long)]
+        socket_port: Option<u16>,
+    },
+
+    /// List all relay servers
+    List {
+        /// Show full server details
+        #[arg(short, long)]
+        verbose: bool,
+    },
+
+    /// Remove a relay server
+    Remove {
+        /// Server name
+        #[arg(short, long, required = true)]
+        name: String,
+    },
 }
 
 #[derive(Subcommand)]
