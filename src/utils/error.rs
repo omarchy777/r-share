@@ -4,13 +4,13 @@ use std::fmt;
 /// Custom error type for rshare
 #[derive(Debug)]
 pub enum Error {
-    FileError(String),
-    NetworkError(String),
-    CryptoError(String),
-    InvalidInput(String),
-    ConfigError(String),
-    SessionError(String),
-    UnknownIssue(String),
+    FileError(String),    // File I/O and permissions
+    NetworkError(String), // Network and connections issues
+    CryptoError(String),  // Cryptography and signing failures
+    InvalidInput(String), // Invalid user input or parameters
+    ConfigError(String),  // Configuration loading and parsing errors
+    SessionError(String), // Session setup and transfer issues
+    UnknownIssue(String), // Catch-all for unexpected errors
 }
 
 impl fmt::Display for Error {
