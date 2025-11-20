@@ -3,7 +3,7 @@ use crate::utils::error::Result;
 use memmap2::Mmap;
 use sha2::{Digest, Sha256};
 use std::fs::File;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 //use tokio::fs::File;
 //use tokio::io::AsyncReadExt;
 
@@ -45,11 +45,11 @@ pub async fn compute_file_hash(file_path: &PathBuf) -> Result<String> {
 ///
 /// # Returns
 /// * `Result<()>` - Ok if file exists and is readable
-pub async fn validate_file_path(file_path: &PathBuf) -> Result<()> {
+pub async fn validate_file_path(file_path: &Path) -> Result<()> {
     if !file_path.exists() {
         return Err(crate::utils::error::Error::FileError(format!(
             "File does not exist: {}",
-            file_path.display().to_string(),
+            file_path.display(),
         )));
     }
 

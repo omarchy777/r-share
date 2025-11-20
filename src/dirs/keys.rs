@@ -3,7 +3,7 @@ use ed25519_dalek::{Signer, SigningKey, Verifier, VerifyingKey};
 use rand::TryRngCore;
 use rand::rngs::OsRng;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 const PRIVATE_KEY_FILE: &str = "private.key";
 const PUBLIC_KEY_FILE: &str = "public.key";
@@ -11,12 +11,12 @@ const PUBLIC_KEY_FILE: &str = "public.key";
 /// Get the default directory for storing keys
 pub fn get_default_keys_dir() -> Result<PathBuf> {
     let home = dirs::home_dir()
-        .ok_or_else(|| Error::ConfigError(format!("Could not determine home directory")))?;
+        .ok_or_else(|| Error::ConfigError("Could not determine home directory".to_string()))?;
     Ok(home.join(".rshare").join("keys"))
 }
 
 /// Check if keys exist at given path (or default)
-pub fn keys_exist_at(custom_path: &PathBuf) -> bool {
+pub fn keys_exist_at(custom_path: &Path) -> bool {
     let private_path = custom_path.join(PRIVATE_KEY_FILE);
     let public_path = custom_path.join(PUBLIC_KEY_FILE);
     private_path.exists() && public_path.exists()
@@ -27,7 +27,7 @@ pub fn generate_keys() -> Result<(SigningKey, VerifyingKey)> {
     let mut secret_bytes = [0u8; 32];
     OsRng
         .try_fill_bytes(&mut secret_bytes)
-        .map_err(|_e| Error::CryptoError(format!("Failed to generate bytes")))?;
+        .map_err(|_e| Error::CryptoError("Failed to generate bytes".to_string()))?;
 
     // Build the signing key from random bytes
     let signing_key = SigningKey::from_bytes(&secret_bytes);
@@ -38,7 +38,7 @@ pub fn generate_keys() -> Result<(SigningKey, VerifyingKey)> {
 
     verifying_key
         .verify(test_case, &signature)
-        .map_err(|_e| Error::CryptoError(format!("Generated keypair failed self-test")))?;
+        .map_err(|_e| Error::CryptoError("Generated keypair failed self-test".to_string()))?;
 
     Ok((signing_key, verifying_key))
 }
@@ -51,18 +51,18 @@ pub fn save_keys_to(
 ) -> Result<PathBuf> {
     // Create directory with restrictive permissions
     fs::create_dir_all(&custom_dir)
-        .map_err(|_e| Error::FileError(format!("Failed to create keys directory")))?;
+        .map_err(|_e| Error::FileError("Failed to create keys directory".to_string()))?;
 
     let private_path = custom_dir.join(PRIVATE_KEY_FILE);
     let public_path = custom_dir.join(PUBLIC_KEY_FILE);
 
     // Write private key
     fs::write(&private_path, signing_key.to_bytes())
-        .map_err(|_e| Error::FileError(format!("Failed to write private key")))?;
+        .map_err(|_e| Error::FileError("Failed to write private key".to_string()))?;
 
     // Write public key
     fs::write(&public_path, verifying_key.to_bytes())
-        .map_err(|_e| Error::FileError(format!("Failed to write public key")))?;
+        .map_err(|_e| Error::FileError("Failed to write public key".to_string()))?;
 
     // Set OS-level permissions (Unix only)
     #[cfg(unix)]
@@ -92,30 +92,30 @@ pub fn save_keys_to(
 }
 
 /// Load keys from disk (custom or default path)
-pub fn load_keys_from(custom_dir: &PathBuf) -> Result<(SigningKey, VerifyingKey)> {
+pub fn load_keys_from(custom_dir: &Path) -> Result<(SigningKey, VerifyingKey)> {
     let private_path = custom_dir.join(PRIVATE_KEY_FILE);
     let public_path = custom_dir.join(PUBLIC_KEY_FILE);
 
     // Read private key bytes
     let private_bytes = fs::read(&private_path)
-        .map_err(|_e| Error::FileError(format!("Failed to read private key")))?;
+        .map_err(|_e| Error::FileError("Failed to read private key".to_string()))?;
 
     let private_key_bytes: [u8; 32] = private_bytes
         .try_into()
-        .map_err(|_e| Error::InvalidInput(format!("Invalid private key size")))?;
+        .map_err(|_e| Error::InvalidInput("Invalid private key size".to_string()))?;
 
     // Read public key bytes
     let public_bytes = fs::read(&public_path)
-        .map_err(|_e| Error::FileError(format!("Failed to read public key")))?;
+        .map_err(|_e| Error::FileError("Failed to read public key".to_string()))?;
 
     let public_key_bytes: [u8; 32] = public_bytes
         .try_into()
-        .map_err(|_e| Error::InvalidInput(format!("Invalid public key size")))?;
+        .map_err(|_e| Error::InvalidInput("Invalid public key size".to_string()))?;
 
     // Construct keys
     let signing_key = SigningKey::from_bytes(&private_key_bytes);
     let verifying_key = VerifyingKey::from_bytes(&public_key_bytes)
-        .map_err(|_e| Error::InvalidInput(format!("Invalid public key")))?;
+        .map_err(|_e| Error::InvalidInput("Invalid public key".to_string()))?;
 
     Ok((signing_key, verifying_key))
 }
@@ -127,13 +127,13 @@ pub fn validate_keypair(signing_key: &SigningKey, verifying_key: &VerifyingKey) 
 
     verifying_key
         .verify(test_message, &signature)
-        .map_err(|_e| Error::CryptoError(format!("Keypair mismatched and invalid")))?;
+        .map_err(|_e| Error::CryptoError("Keypair mismatched and invalid".to_string()))?;
 
     Ok(())
 }
 
 /// Get public key fingerprint for display (from custom or default path)
-pub fn get_public_key_fingerprint_from(custom_dir: &PathBuf) -> Result<String> {
+pub fn get_public_key_fingerprint_from(custom_dir: &Path) -> Result<String> {
     let (_, verifying_key) = load_keys_from(custom_dir)?;
     let bytes = verifying_key.to_bytes();
     Ok(hex::encode(&bytes[..8])) // First 8 bytes as hex
@@ -143,12 +143,12 @@ pub fn get_public_key_fingerprint_from(custom_dir: &PathBuf) -> Result<String> {
 #[cfg(windows)]
 fn set_windows_security(path: &PathBuf) -> Result<()> {
     let metadata =
-        fs::metadata(path).map_err(|e| Error::FileError(format!("Failed to get file metadata")))?;
+        fs::metadata(path).map_err(|_e| Error::FileError("Failed to get file metadata".to_string()))?;
 
     let mut perms = metadata.permissions();
     perms.set_readonly(false);
     fs::set_permissions(path, perms)
-        .map_err(|e| Error::FileError(format!("Failed to set permissions")))?;
+        .map_err(|_e| Error::FileError("Failed to set permissions".to_string()))?;
 
     Ok(())
 }

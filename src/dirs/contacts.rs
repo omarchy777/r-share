@@ -20,7 +20,7 @@ impl ContactList {
     pub fn add(&mut self, name: String, public_key: String) -> Result<()> {
         // Validate public key format
         let _ = hex::decode(&public_key)
-            .map_err(|_e| Error::InvalidInput(format!("Invalid public key format")));
+            .map_err(|_e| Error::InvalidInput("Invalid public key format".to_string()));
 
         if self.contacts.contains_key(&name) {
             return Err(Error::InvalidInput(format!(
@@ -62,7 +62,7 @@ impl ContactList {
 /// Get contacts file path
 fn get_contacts_path() -> Result<PathBuf> {
     let home = dirs::home_dir()
-        .ok_or_else(|| Error::FileError(format!("Could not find home directory")))?;
+        .ok_or_else(|| Error::FileError("Could not find home directory".to_string()))?;
     Ok(home.join(".rshare").join("contact.json"))
 }
 
@@ -76,7 +76,7 @@ pub fn load_contacts() -> Result<ContactList> {
 
     let content = std::fs::read_to_string(&path)?;
     let contacts: ContactList = serde_json::from_str(&content)
-        .map_err(|_e| Error::ConfigError(format!("Invalid contacts json file")))?;
+        .map_err(|_e| Error::ConfigError("Invalid contacts json file".to_string()))?;
 
     Ok(contacts)
 }
@@ -88,11 +88,11 @@ pub fn save_contacts(contacts: &ContactList) -> Result<()> {
     // Ensure parent directory exists
     if let Some(parent) = contact_path.parent() {
         std::fs::create_dir_all(parent)
-            .map_err(|_e| Error::FileError(format!("Failed to create contact directory")))?;
+            .map_err(|_e| Error::FileError("Failed to create contact directory".to_string()))?;
     }
 
     let content = serde_json::to_string_pretty(contacts)
-        .map_err(|_e| Error::ConfigError(format!("Failed to serialize contacts")))?;
+        .map_err(|_e| Error::ConfigError("Failed to serialize contacts".to_string()))?;
 
     std::fs::write(&contact_path, content)?;
 

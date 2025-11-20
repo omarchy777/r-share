@@ -3,7 +3,7 @@ use crate::dirs::keys;
 use crate::utils::error::{Error, Result};
 use local_ip_address::local_ip;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -82,7 +82,7 @@ impl Config {
 
     pub fn to_toml_string(&self) -> Result<String> {
         toml::to_string_pretty(self)
-            .map_err(|_e| Error::ConfigError(format!("Failed to serialize config")))
+            .map_err(|_e| Error::ConfigError("Failed to serialize config".to_string()))
     }
 }
 
@@ -104,16 +104,16 @@ pub fn get_default_server(config: &Config) -> Result<ServerConfig> {
         .iter()
         .find(|s| s.default)
         .cloned()
-        .ok_or_else(|| Error::InvalidInput(format!("No default server found")))
+        .ok_or_else(|| Error::InvalidInput("No default server found".to_string()))
 }
 
 pub fn get_config_path() -> Result<PathBuf> {
     let home = dirs::home_dir()
-        .ok_or_else(|| Error::FileError(format!("Could not find home directory")))?;
+        .ok_or_else(|| Error::FileError("Could not find home directory".to_string()))?;
     Ok(home.join(".rshare").join("config.toml"))
 }
 
-pub fn exists_config_at(config_path: &PathBuf) -> bool {
+pub fn exists_config_at(config_path: &Path) -> bool {
     config_path.exists() && config_path.is_file()
 }
 
@@ -129,14 +129,14 @@ pub fn save_config(config: &Config) -> Result<()> {
     // Create parent directory
     if let Some(parent) = config_path.parent() {
         std::fs::create_dir_all(parent)
-            .map_err(|_e| Error::FileError(format!("Failed to create config directory")))?;
+            .map_err(|_e| Error::FileError("Failed to create config directory".to_string()))?;
     }
 
     let toml_string = toml::to_string_pretty(config)
-        .map_err(|_e| Error::FileError(format!("Failed to serialize config")))?;
+        .map_err(|_e| Error::FileError("Failed to serialize config".to_string()))?;
 
     std::fs::write(&config_path, toml_string)
-        .map_err(|_e| Error::FileError(format!("Failed to write config")))?;
+        .map_err(|_e| Error::FileError("Failed to write config".to_string()))?;
 
     Ok(())
 }
@@ -145,9 +145,9 @@ pub fn load_config() -> Result<Config> {
     let config_path = get_config_path()?;
 
     let content = std::fs::read_to_string(&config_path)
-        .map_err(|_e| Error::FileError(format!("Failed to read config")))?;
+        .map_err(|_e| Error::FileError("Failed to read config".to_string()))?;
 
-    toml::from_str(&content).map_err(|_e| Error::InvalidInput(format!("Invalid config file")))
+    toml::from_str(&content).map_err(|_e| Error::InvalidInput("Invalid config file".to_string()))
 }
 
 pub fn add_server(config: &mut Config, server: &ServerConfig) -> Result<()> {
@@ -169,9 +169,7 @@ pub fn add_server(config: &mut Config, server: &ServerConfig) -> Result<()> {
         .iter()
         .any(|s| s.server_ip == server.server_ip && s.server_name == server.server_name)
     {
-        return Err(Error::InvalidInput(format!(
-            "Server with same IP or name already exists"
-        )));
+        return Err(Error::InvalidInput("Server with same IP or name already exists".to_string()));
     }
 
     // If new server is default, clear existing defaults
@@ -190,18 +188,17 @@ pub fn list_servers(config: &Config) -> Result<Vec<ServerConfig>> {
     Ok(config.server.clone())
 }
 pub fn remove_server(config: &mut Config, target: String) -> Result<ServerConfig> {
-    if let Some(server) = config.server.iter().find(|s| s.server_name == target) {
-        if server.default {
-            return Err(Error::InvalidInput(format!("Cannot remove default server")));
+    if let Some(server) = config.server.iter().find(|s| s.server_name == target)
+        && server.default {
+            return Err(Error::InvalidInput("Cannot remove default server".to_string()));
         }
-    }
 
     let before = config.server.len();
     config.server.retain(|s| s.server_name != target);
 
     if config.server.len() == before {
         // No matching server found
-        return Err(Error::InvalidInput(format!("Server not found")));
+        return Err(Error::InvalidInput("Server not found".to_string()));
     }
 
     let server = config

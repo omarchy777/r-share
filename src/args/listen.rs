@@ -95,22 +95,22 @@ pub async fn run(
     let filename = session
         .filename
         .clone()
-        .ok_or_else(|| Error::SessionError(format!("No filename in session")))?;
+        .ok_or_else(|| Error::SessionError("No filename in session".to_string()))?;
     let filesize = session
         .file_size
-        .ok_or_else(|| Error::SessionError(format!("No file size in session")))?;
+        .ok_or_else(|| Error::SessionError("No file size in session".to_string()))?;
     let signature_hex = session
         .signature
         .clone()
-        .ok_or_else(|| Error::SessionError(format!("No signature in session")))?;
+        .ok_or_else(|| Error::SessionError("No signature in session".to_string()))?;
     let sender_fp = session
         .sender_fp
         .clone()
-        .ok_or_else(|| Error::SessionError(format!("No sender fingerprint in session")))?;
+        .ok_or_else(|| Error::SessionError("No sender fingerprint in session".to_string()))?;
     let file_hash_from_sender = session
         .file_hash
         .clone()
-        .ok_or_else(|| Error::SessionError(format!("No file hash in session")))?;
+        .ok_or_else(|| Error::SessionError("No file hash in session".to_string()))?;
 
     // Verify sender is the expected contact
     if expected_sender.public_key != sender_fp {
@@ -123,32 +123,32 @@ pub async fn run(
 
     // Decode sender's public key for signature verification
     let sender_key_bytes = hex::decode(&sender_fp)
-        .map_err(|_e| Error::CryptoError(format!("Invalid sender public key")))?;
+        .map_err(|_e| Error::CryptoError("Invalid sender public key".to_string()))?;
     let sender_key = ed25519_dalek::VerifyingKey::from_bytes(
         sender_key_bytes
             .as_slice()
             .try_into()
-            .map_err(|_e| Error::CryptoError(format!("Invalid verify key length")))?,
+            .map_err(|_e| Error::CryptoError("Invalid verify key length".to_string()))?,
     )
     .map_err(|_e| Error::CryptoError("Invalid sender key".into()))?;
 
     // Verify Ed25519 signature on metadata (filename|filesize|hash)
     let metadata_msg = format!("{}|{}|{}", filename, filesize, file_hash_from_sender);
     let signature_bytes = hex::decode(&signature_hex)
-        .map_err(|_e| Error::SessionError(format!("Invalid signature hex")))?;
+        .map_err(|_e| Error::SessionError("Invalid signature hex".to_string()))?;
     let signature = ed25519_dalek::Signature::from_bytes(
         signature_bytes
             .as_slice()
             .try_into()
-            .map_err(|_e| Error::SessionError(format!("Invalid signature key length")))?,
+            .map_err(|_e| Error::SessionError("Invalid signature key length".to_string()))?,
     );
 
     // Verify signature
-    if let Err(_) = signing::verify_signature(&sender_key, &metadata_msg, &signature) {
+    if signing::verify_signature(&sender_key, &metadata_msg, &signature).is_err() {
         println!();
         println!("{} SIGNATURE VERIFICATION FAILED!", "✗".bright_red().bold());
         println!("   Sender claims: {}...", &sender_fp[..16].bright_red());
-        if let Some(ref expected) = expected_sender.public_key.get(..16) {
+        if let Some(expected) = expected_sender.public_key.get(..16) {
             println!("   Expected from: {}...", expected.bright_yellow());
         }
         println!();
@@ -245,9 +245,7 @@ pub async fn run(
             tokio::fs::remove_file(&file_path).await?;
             println!("{} Partial file deleted", "✓".bright_red());
 
-            return Err(Error::SessionError(format!(
-                "Transfer interrupted - connection closed before chunk size read",
-            )));
+            return Err(Error::SessionError("Transfer interrupted - connection closed before chunk size read".to_string()));
         }
 
         let chunk_size = u32::from_be_bytes(size_buffer) as usize;
@@ -271,9 +269,7 @@ pub async fn run(
             tokio::fs::remove_file(&file_path).await?;
             println!("{} Partial file deleted", "✓".bright_red());
 
-            return Err(Error::SessionError(format!(
-                "Transfer interrupted - connection closed while reading chunk",
-            )));
+            return Err(Error::SessionError("Transfer interrupted - connection closed while reading chunk".to_string()));
         }
 
         // Decrypt the chunk
@@ -322,7 +318,7 @@ pub async fn run(
         let _ = session.write_all(b"ERROR:hash_mismatch\n").await;
         let _ = session.flush().await;
 
-        return Err(Error::FileError(format!("File integrity check failed")));
+        return Err(Error::FileError("File integrity check failed".to_string()));
     }
 
     println!(

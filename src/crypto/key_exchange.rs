@@ -14,7 +14,7 @@ impl EphemeralKeyPair {
     /// Generate a fresh ephemeral X25519 keypair for this transfer
     /// This keypair is temporary and should be deleted after the transfer completes.
     pub fn generate() -> Self {
-        let secret = EphemeralSecret::random_from_rng(&mut OsRng);
+        let secret = EphemeralSecret::random_from_rng(OsRng);
         let public = PublicKey::from(&secret);
 
         EphemeralKeyPair { secret, public }
@@ -29,7 +29,7 @@ impl EphemeralKeyPair {
 /// Parse a hex-encoded X25519 public key
 pub fn parse_public_key(hex_str: &str) -> Result<PublicKey> {
     let bytes =
-        hex::decode(hex_str).map_err(|_e| Error::CryptoError(format!("Invalid hex public key")))?;
+        hex::decode(hex_str).map_err(|_e| Error::CryptoError("Invalid hex public key".to_string()))?;
 
     if bytes.len() != 32 {
         return Err(Error::CryptoError(format!(
@@ -58,7 +58,7 @@ pub fn derive_aes_key(shared_secret: &[u8; 32], session_id: &str) -> Result<[u8;
 
     let mut aes_key = [0u8; 32]; // 256 bits for AES-256
     hkdf.expand(b"File_Encryption_Test", &mut aes_key)
-        .map_err(|_e| Error::CryptoError(format!("HKDF key derivation failed")))?;
+        .map_err(|_e| Error::CryptoError("HKDF key derivation failed".to_string()))?;
 
     Ok(aes_key)
 }

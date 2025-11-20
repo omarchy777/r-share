@@ -128,7 +128,7 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, relay: Option<String>)
     let receiver_ephemeral_hex = session
         .receiver_ephemeral_key
         .as_ref()
-        .ok_or_else(|| Error::SessionError(format!("Receiver key not found")))?;
+        .ok_or_else(|| Error::SessionError("Receiver key not found".to_string()))?;
 
     //println!("{}", " Deriving encryption key...".bright_cyan());
     let aes_key = key_exchange::perform_key_exchange(

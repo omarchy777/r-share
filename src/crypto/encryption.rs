@@ -58,9 +58,7 @@ pub fn decrypt_chunk(aes_key: &[u8; 32], encrypted: &[u8]) -> Result<Vec<u8>> {
 
     // Decrypt and verify authentication tag
     let plaintext = cipher.decrypt(nonce, ciphertext).map_err(|_e| {
-        Error::CryptoError(format!(
-            "Decryption failed (authentication failure or corrupted data)",
-        ))
+        Error::CryptoError("Decryption failed (authentication failure or corrupted data)".to_string())
     })?;
 
     Ok(plaintext)

@@ -17,5 +17,5 @@ pub fn verify_signature(
 ) -> Result<()> {
     verifying_key
         .verify_strict(data.as_bytes(), signature)
-        .map_err(|_e| Error::InvalidInput(format!("Signature verification failed")))
+        .map_err(|_e| Error::InvalidInput("Signature verification failed".to_string()))
 }

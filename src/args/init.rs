@@ -76,7 +76,7 @@ pub async fn run(key_path: Option<PathBuf>, force: bool) -> Result<()> {
         contacts.remove("self")?;
     }
 
-    contacts.add("self".to_string(), hex::encode(&public_key.to_bytes()))?;
+    contacts.add("self".to_string(), hex::encode(public_key.to_bytes()))?;
     contacts::save_contacts(&contacts)?;
 
     // Create/update config
@@ -96,7 +96,7 @@ pub async fn run(key_path: Option<PathBuf>, force: bool) -> Result<()> {
     );
     println!(
         "   Public:  {}",
-        hex::encode(&public_key.to_bytes()).bright_white()
+        hex::encode(public_key.to_bytes()).bright_white()
     );
 
     println!(

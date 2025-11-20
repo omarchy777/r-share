@@ -16,28 +16,20 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::FileError(msg) => write!(f, "File Error: {}", msg.red().underline().to_string()),
+            Error::FileError(msg) => write!(f, "File Error: {}", msg.red().underline()),
             Error::NetworkError(msg) => {
-                write!(f, "Network Error: {}", msg.red().underline().to_string())
+                write!(f, "Network Error: {}", msg.red().underline())
             }
-            Error::CryptoError(msg) => write!(
-                f,
-                "Cryptography Error: {}",
-                msg.red().underline().to_string()
-            ),
+            Error::CryptoError(msg) => write!(f, "Cryptography Error: {}", msg.red().underline()),
             Error::InvalidInput(msg) => {
-                write!(f, "Invalid Input: {}", msg.red().underline().to_string())
+                write!(f, "Invalid Input: {}", msg.red().underline())
             }
-            Error::ConfigError(msg) => write!(
-                f,
-                "Configuration Error: {}",
-                msg.red().underline().to_string()
-            ),
+            Error::ConfigError(msg) => write!(f, "Configuration Error: {}", msg.red().underline()),
             Error::SessionError(msg) => {
-                write!(f, "Session Error: {}", msg.red().underline().to_string())
+                write!(f, "Session Error: {}", msg.red().underline())
             }
             Error::UnknownIssue(msg) => {
-                write!(f, "Unknown Issue: {}", msg.red().underline().to_string())
+                write!(f, "Unknown Issue: {}", msg.red().underline())
             }
         }
     }
@@ -79,13 +71,7 @@ impl From<serde_json::Error> for Error {
 /// Convert reqwest errors
 impl From<reqwest::Error> for Error {
     fn from(err: reqwest::Error) -> Self {
-        if err.is_timeout() {
-            Error::NetworkError(err.to_string())
-        } else if err.is_connect() {
-            Error::NetworkError(err.to_string())
-        } else {
-            Error::NetworkError(err.to_string())
-        }
+        Error::NetworkError(err.to_string())
     }
 }
 

@@ -105,7 +105,7 @@ impl TransferSession {
         self.buf_reader
             .read(buf)
             .await
-            .map_err(|_e| Error::NetworkError(format!("Failed to read from socket")))
+            .map_err(|_e| Error::NetworkError("Failed to read from socket".to_string()))
     }
 
     /// Read exact amount of data from the socket connection
@@ -120,7 +120,7 @@ impl TransferSession {
         self.buf_writer
             .write(data)
             .await
-            .map_err(|_e| Error::NetworkError(format!("Failed to write to socket")))
+            .map_err(|_e| Error::NetworkError("Failed to write to socket".to_string()))
     }
 
     /// Write all data to the socket connection
@@ -128,7 +128,7 @@ impl TransferSession {
         self.buf_writer
             .write_all(data)
             .await
-            .map_err(|_e| Error::NetworkError(format!("Failed to write all to socket")))
+            .map_err(|_e| Error::NetworkError("Failed to write all to socket".to_string()))
     }
 
     /// Flush the socket connection
@@ -136,7 +136,7 @@ impl TransferSession {
         self.buf_writer
             .flush()
             .await
-            .map_err(|_e| Error::NetworkError(format!("Failed to flush socket")))
+            .map_err(|_e| Error::NetworkError("Failed to flush socket".to_string()))
     }
 
     /// Get the session ID
@@ -179,7 +179,7 @@ impl RelayClient {
             .get(&url)
             .send()
             .await
-            .map_err(|_e| Error::NetworkError(format!("Failed to call health API")))?;
+            .map_err(|_e| Error::NetworkError("Failed to call health API".to_string()))?;
 
         if !response.status().is_success() {
             return Err(Error::NetworkError(format!(
@@ -224,7 +224,7 @@ impl RelayClient {
             .json(&request)
             .send()
             .await
-            .map_err(|_e| Error::NetworkError(format!("Failed to call serve API")))?;
+            .map_err(|_e| Error::NetworkError("Failed to call serve API".to_string()))?;
 
         if !response.status().is_success() {
             let status = response.status();
@@ -238,7 +238,7 @@ impl RelayClient {
         let session: ServeResponse = response
             .json()
             .await
-            .map_err(|_e| Error::SessionError(format!("Failed to parse session response")))?;
+            .map_err(|_e| Error::SessionError("Failed to parse session response".to_string()))?;
 
         // Connect to socket server
         let socket = self
@@ -287,7 +287,7 @@ impl RelayClient {
             .json(&request)
             .send()
             .await
-            .map_err(|_e| Error::NetworkError(format!("Failed to call listen API")))?;
+            .map_err(|_e| Error::NetworkError("Failed to call listen API".to_string()))?;
 
         if !response.status().is_success() {
             let status = response.status();
@@ -301,7 +301,7 @@ impl RelayClient {
         let session: ListenResponse = response
             .json()
             .await
-            .map_err(|_e| Error::NetworkError(format!("Failed to parse session response")))?;
+            .map_err(|_e| Error::NetworkError("Failed to parse session response".to_string()))?;
 
         // Extract required fields from response
         let session_id = session
@@ -366,33 +366,33 @@ impl RelayClient {
 
         socket
             .set_nodelay(true)
-            .map_err(|_e| Error::NetworkError(format!("Failed to set TCP_NODELAY")))?;
+            .map_err(|_e| Error::NetworkError("Failed to set TCP_NODELAY".to_string()))?;
 
         socket
             .set_send_buffer_size(BUFFER_SIZE as u32)
-            .map_err(|_e| Error::NetworkError(format!("Failed to set send buffer")))?;
+            .map_err(|_e| Error::NetworkError("Failed to set send buffer".to_string()))?;
         socket
             .set_recv_buffer_size(BUFFER_SIZE as u32)
-            .map_err(|_e| Error::NetworkError(format!("Failed to set recv buffer")))?;
+            .map_err(|_e| Error::NetworkError("Failed to set recv buffer".to_string()))?;
 
         let mut socket = socket
             .connect(addr)
             .await
-            .map_err(|_e| Error::NetworkError(format!("Failed to connect to socket server")))?;
+            .map_err(|_e| Error::NetworkError("Failed to connect to socket server".to_string()))?;
 
         // Send handshake: "session_id:role"
         let handshake = format!("{}:{}\n", session_id, role.as_str());
         socket
             .write_all(handshake.as_bytes())
             .await
-            .map_err(|_e| Error::NetworkError(format!("Failed to send handshake")))?;
+            .map_err(|_e| Error::NetworkError("Failed to send handshake".to_string()))?;
 
         // Wait for READY signal from server (indicates pairing complete)
         let mut ready_buffer = [0u8; 6]; // "READY\n" is 6 bytes
         socket
             .read_exact(&mut ready_buffer)
             .await
-            .map_err(|_e| Error::NetworkError(format!("Failed to read READY signal")))?;
+            .map_err(|_e| Error::NetworkError("Failed to read READY signal".to_string()))?;
 
         let ready_signal = String::from_utf8_lossy(&ready_buffer);
         if ready_signal.as_bytes() != READY_SIGNAL {
@@ -406,7 +406,7 @@ impl RelayClient {
         socket
             .write_all(ACK_SIGNAL)
             .await
-            .map_err(|_e| Error::NetworkError(format!("Failed to send ACK")))?;
+            .map_err(|_e| Error::NetworkError("Failed to send ACK".to_string()))?;
 
         // VERY CRITICAL!!! -> Give server time to process ACK and activate relay before data starts flowing
         tokio::time::sleep(tokio::time::Duration::from_millis(MAX_DONE_WAIT_MILLIS)).await;
