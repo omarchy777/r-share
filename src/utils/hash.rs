@@ -47,9 +47,10 @@ pub async fn compute_file_hash(file_path: &PathBuf) -> Result<String> {
 /// * `Result<()>` - Ok if file exists and is readable
 pub async fn validate_file_path(file_path: &PathBuf) -> Result<()> {
     if !file_path.exists() {
-        return Err(crate::utils::error::Error::FileNotFound(
+        return Err(crate::utils::error::Error::FileError(format!(
+            "File does not exist: {}",
             file_path.display().to_string(),
-        ));
+        )));
     }
 
     if !file_path.is_file() {
