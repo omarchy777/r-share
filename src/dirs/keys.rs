@@ -11,7 +11,7 @@ const PUBLIC_KEY_FILE: &str = "public.key";
 /// Get the default directory for storing keys
 pub fn get_default_keys_dir() -> Result<PathBuf> {
     let home = dirs::home_dir()
-        .ok_or_else(|| Error::KeyGenerationFailed("Could not find home directory".into()))?;
+        .ok_or_else(|| Error::ConfigError(format!("Could not determine home directory")))?;
     Ok(home.join(".rshare").join("keys"))
 }
 
@@ -27,18 +27,18 @@ pub fn generate_keys() -> Result<(SigningKey, VerifyingKey)> {
     let mut secret_bytes = [0u8; 32];
     OsRng
         .try_fill_bytes(&mut secret_bytes)
-        .map_err(|e| Error::KeyGenerationFailed(format!("Failed to generate bytes: {e}")))?;
+        .map_err(|_e| Error::CryptoError(format!("Failed to generate bytes")))?;
 
     // Build the signing key from random bytes
     let signing_key = SigningKey::from_bytes(&secret_bytes);
     let verifying_key: VerifyingKey = signing_key.verifying_key();
 
-    let test_case = b"Test Message";
+    let test_case = b"SUPER_SECRET";
     let signature = signing_key.sign(test_case.as_ref());
 
-    verifying_key.verify(test_case, &signature).map_err(|e| {
-        Error::KeyGenerationFailed(format!("Failed to generate valid keypair: {e}"))
-    })?;
+    verifying_key
+        .verify(test_case, &signature)
+        .map_err(|_e| Error::CryptoError(format!("Generated keypair failed self-test")))?;
 
     Ok((signing_key, verifying_key))
 }
@@ -51,18 +51,18 @@ pub fn save_keys_to(
 ) -> Result<PathBuf> {
     // Create directory with restrictive permissions
     fs::create_dir_all(&custom_dir)
-        .map_err(|e| Error::KeyGenerationFailed(format!("Failed to create keys directory: {e}")))?;
+        .map_err(|_e| Error::FileError(format!("Failed to create keys directory")))?;
 
     let private_path = custom_dir.join(PRIVATE_KEY_FILE);
     let public_path = custom_dir.join(PUBLIC_KEY_FILE);
 
     // Write private key
     fs::write(&private_path, signing_key.to_bytes())
-        .map_err(|e| Error::KeyGenerationFailed(format!("Failed to write private key: {e}")))?;
+        .map_err(|_e| Error::FileError(format!("Failed to write private key")))?;
 
     // Write public key
     fs::write(&public_path, verifying_key.to_bytes())
-        .map_err(|e| Error::KeyGenerationFailed(format!("Failed to write public key: {e}")))?;
+        .map_err(|_e| Error::FileError(format!("Failed to write public key")))?;
 
     // Set OS-level permissions (Unix only)
     #[cfg(unix)]
@@ -70,19 +70,16 @@ pub fn save_keys_to(
         use std::os::unix::fs::PermissionsExt;
 
         // Private key: only owner can read/write (600)
-        fs::set_permissions(&private_path, fs::Permissions::from_mode(0o600)).map_err(|e| {
-            Error::KeyGenerationFailed(format!("Failed to set private key permissions: {e}"))
-        })?;
+        fs::set_permissions(&private_path, fs::Permissions::from_mode(0o600))
+            .map_err(|_e| Error::FileError(format!("Failed to set private key permissions")))?;
 
         // Public key: owner read/write, others read (644)
-        fs::set_permissions(&public_path, fs::Permissions::from_mode(0o644)).map_err(|e| {
-            Error::KeyGenerationFailed(format!("Failed to set public key permissions: {e}"))
-        })?;
+        fs::set_permissions(&public_path, fs::Permissions::from_mode(0o644))
+            .map_err(|_e| Error::FileError(format!("Failed to set public key permissions")))?;
 
         // Directory: only owner access (700)
-        fs::set_permissions(&custom_dir, fs::Permissions::from_mode(0o700)).map_err(|e| {
-            Error::KeyGenerationFailed(format!("Failed to set directory permissions: {e}"))
-        })?;
+        fs::set_permissions(&custom_dir, fs::Permissions::from_mode(0o700))
+            .map_err(|_e| Error::FileError(format!("Failed to set directory permissions")))?;
     }
 
     // On Windows, use security attributes
@@ -101,36 +98,36 @@ pub fn load_keys_from(custom_dir: &PathBuf) -> Result<(SigningKey, VerifyingKey)
 
     // Read private key bytes
     let private_bytes = fs::read(&private_path)
-        .map_err(|e| Error::FileRead(format!("Failed to read private key: {e}")))?;
+        .map_err(|_e| Error::FileError(format!("Failed to read private key")))?;
 
     let private_key_bytes: [u8; 32] = private_bytes
         .try_into()
-        .map_err(|_| Error::InvalidInput("Invalid private key size".into()))?;
+        .map_err(|_e| Error::InvalidInput(format!("Invalid private key size")))?;
 
     // Read public key bytes
     let public_bytes = fs::read(&public_path)
-        .map_err(|e| Error::FileRead(format!("Failed to read public key: {e}")))?;
+        .map_err(|_e| Error::FileError(format!("Failed to read public key")))?;
 
     let public_key_bytes: [u8; 32] = public_bytes
         .try_into()
-        .map_err(|_| Error::InvalidInput("Invalid public key size".into()))?;
+        .map_err(|_e| Error::InvalidInput(format!("Invalid public key size")))?;
 
     // Construct keys
     let signing_key = SigningKey::from_bytes(&private_key_bytes);
     let verifying_key = VerifyingKey::from_bytes(&public_key_bytes)
-        .map_err(|e| Error::KeyGenerationFailed(format!("Invalid public key: {e}")))?;
+        .map_err(|_e| Error::InvalidInput(format!("Invalid public key")))?;
 
     Ok((signing_key, verifying_key))
 }
 
 /// Validate that the keypair is correct
 pub fn validate_keypair(signing_key: &SigningKey, verifying_key: &VerifyingKey) -> Result<()> {
-    let test_message = b"rshare validation";
+    let test_message = b"VALIDATE_KEYPAIR";
     let signature = signing_key.sign(test_message);
 
     verifying_key
         .verify(test_message, &signature)
-        .map_err(|e| Error::KeyGenerationFailed(format!("Keypair mismatch: {e}")))?;
+        .map_err(|_e| Error::CryptoError(format!("Keypair mismatched and invalid")))?;
 
     Ok(())
 }
@@ -145,13 +142,13 @@ pub fn get_public_key_fingerprint_from(custom_dir: &PathBuf) -> Result<String> {
 // Windows-specific security
 #[cfg(windows)]
 fn set_windows_security(path: &PathBuf) -> Result<()> {
-    let metadata = fs::metadata(path)
-        .map_err(|e| Error::KeyGenerationFailed(format!("Failed to get file metadata: {e}")))?;
+    let metadata =
+        fs::metadata(path).map_err(|e| Error::FileError(format!("Failed to get file metadata")))?;
 
     let mut perms = metadata.permissions();
     perms.set_readonly(false);
     fs::set_permissions(path, perms)
-        .map_err(|e| Error::KeyGenerationFailed(format!("Failed to set permissions: {e}")))?;
+        .map_err(|e| Error::FileError(format!("Failed to set permissions")))?;
 
     Ok(())
 }

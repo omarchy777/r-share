@@ -81,12 +81,8 @@ impl Config {
     }
 
     pub fn to_toml_string(&self) -> Result<String> {
-        toml::to_string_pretty(self).map_err(|e| {
-            Error::FileWrite(format!(
-                "Failed to serialize config to TOML: {}",
-                e.to_string()
-            ))
-        })
+        toml::to_string_pretty(self)
+            .map_err(|_e| Error::ConfigError(format!("Failed to serialize config")))
     }
 }
 
@@ -108,12 +104,12 @@ pub fn get_default_server(config: &Config) -> Result<ServerConfig> {
         .iter()
         .find(|s| s.default)
         .cloned()
-        .ok_or_else(|| Error::InvalidInput("No default server found".into()))
+        .ok_or_else(|| Error::InvalidInput(format!("No default server found")))
 }
 
 pub fn get_config_path() -> Result<PathBuf> {
     let home = dirs::home_dir()
-        .ok_or_else(|| Error::FileNotFound("Could not find home directory".into()))?;
+        .ok_or_else(|| Error::FileError(format!("Could not find home directory")))?;
     Ok(home.join(".rshare").join("config.toml"))
 }
 
@@ -133,14 +129,14 @@ pub fn save_config(config: &Config) -> Result<()> {
     // Create parent directory
     if let Some(parent) = config_path.parent() {
         std::fs::create_dir_all(parent)
-            .map_err(|e| Error::FileWrite(format!("Failed to create config directory: {}", e)))?;
+            .map_err(|_e| Error::FileError(format!("Failed to create config directory")))?;
     }
 
     let toml_string = toml::to_string_pretty(config)
-        .map_err(|e| Error::FileWrite(format!("Failed to serialize config: {}", e)))?;
+        .map_err(|_e| Error::FileError(format!("Failed to serialize config")))?;
 
     std::fs::write(&config_path, toml_string)
-        .map_err(|e| Error::FileWrite(format!("Failed to write config: {}", e)))?;
+        .map_err(|_e| Error::FileError(format!("Failed to write config")))?;
 
     Ok(())
 }
@@ -149,9 +145,9 @@ pub fn load_config() -> Result<Config> {
     let config_path = get_config_path()?;
 
     let content = std::fs::read_to_string(&config_path)
-        .map_err(|e| Error::FileRead(format!("Failed to read config: {}", e)))?;
+        .map_err(|_e| Error::FileError(format!("Failed to read config")))?;
 
-    toml::from_str(&content).map_err(|e| Error::InvalidInput(format!("Invalid config file: {}", e)))
+    toml::from_str(&content).map_err(|_e| Error::InvalidInput(format!("Invalid config file")))
 }
 
 pub fn add_server(config: &mut Config, server: &ServerConfig) -> Result<()> {
@@ -173,9 +169,9 @@ pub fn add_server(config: &mut Config, server: &ServerConfig) -> Result<()> {
         .iter()
         .any(|s| s.server_ip == server.server_ip && s.server_name == server.server_name)
     {
-        return Err(Error::InvalidInput(
-            "Server with same IP or name already exists".into(),
-        ));
+        return Err(Error::InvalidInput(format!(
+            "Server with same IP or name already exists"
+        )));
     }
 
     // If new server is default, clear existing defaults
@@ -196,7 +192,7 @@ pub fn list_servers(config: &Config) -> Result<Vec<ServerConfig>> {
 pub fn remove_server(config: &mut Config, target: String) -> Result<ServerConfig> {
     if let Some(server) = config.server.iter().find(|s| s.server_name == target) {
         if server.default {
-            return Err(Error::InvalidInput("Cannot remove default server".into()));
+            return Err(Error::InvalidInput(format!("Cannot remove default server")));
         }
     }
 
@@ -205,7 +201,7 @@ pub fn remove_server(config: &mut Config, target: String) -> Result<ServerConfig
 
     if config.server.len() == before {
         // No matching server found
-        return Err(Error::InvalidInput("Server not found".into()));
+        return Err(Error::InvalidInput(format!("Server not found")));
     }
 
     let server = config
