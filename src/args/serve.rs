@@ -84,6 +84,10 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, relay: Option<String>)
         server_config.socket_port,
     );
 
+    println!();
+    println!("{}", "Checking server health...".white());
+    relay_client.health_check().await?;
+
     // Create transfer metadata and signature (includes file hash)
     let metadata_msg = format!("{}|{}|{}", filename, filesize, file_hash_hex);
     let metadata_signature = signing::sign_data(&signing_key, &metadata_msg)?;

@@ -66,6 +66,9 @@ pub async fn run(
         server_config.socket_port,
     );
 
+    println!("{}", "Checking server health...".white());
+    relay_client.health_check().await?;
+
     // Generate ephemeral X25519 keypair for this transfer
     //println!(
     //    "{}",
@@ -83,6 +86,7 @@ pub async fn run(
     //println!();
 
     // Join transfer session (blocks until sender connects)
+    println!();
     println!("{}", "Waiting for sender to connect...".yellow());
     let mut session = relay_client
         .listen(my_fingerprint.clone(), receiver_ephemeral_hex)
@@ -245,7 +249,9 @@ pub async fn run(
             tokio::fs::remove_file(&file_path).await?;
             println!("{} Partial file deleted", "✓".bright_red());
 
-            return Err(Error::SessionError("Transfer interrupted - connection closed before chunk size read".to_string()));
+            return Err(Error::SessionError(
+                "Transfer interrupted - connection closed before chunk size read".to_string(),
+            ));
         }
 
         let chunk_size = u32::from_be_bytes(size_buffer) as usize;
@@ -269,7 +275,9 @@ pub async fn run(
             tokio::fs::remove_file(&file_path).await?;
             println!("{} Partial file deleted", "✓".bright_red());
 
-            return Err(Error::SessionError("Transfer interrupted - connection closed while reading chunk".to_string()));
+            return Err(Error::SessionError(
+                "Transfer interrupted - connection closed while reading chunk".to_string(),
+            ));
         }
 
         // Decrypt the chunk
