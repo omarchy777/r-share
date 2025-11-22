@@ -169,7 +169,9 @@ pub fn add_server(config: &mut Config, server: &ServerConfig) -> Result<()> {
         .iter()
         .any(|s| s.server_ip == server.server_ip && s.server_name == server.server_name)
     {
-        return Err(Error::InvalidInput("Server with same IP or name already exists".to_string()));
+        return Err(Error::InvalidInput(
+            "Server with same IP or name already exists".to_string(),
+        ));
     }
 
     // If new server is default, clear existing defaults
@@ -189,9 +191,12 @@ pub fn list_servers(config: &Config) -> Result<Vec<ServerConfig>> {
 }
 pub fn remove_server(config: &mut Config, target: String) -> Result<ServerConfig> {
     if let Some(server) = config.server.iter().find(|s| s.server_name == target)
-        && server.default {
-            return Err(Error::InvalidInput("Cannot remove default server".to_string()));
-        }
+        && server.default
+    {
+        return Err(Error::InvalidInput(
+            "Cannot remove default server".to_string(),
+        ));
+    }
 
     let before = config.server.len();
     config.server.retain(|s| s.server_name != target);

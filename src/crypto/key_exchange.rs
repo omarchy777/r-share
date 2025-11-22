@@ -28,8 +28,8 @@ impl EphemeralKeyPair {
 
 /// Parse a hex-encoded X25519 public key
 pub fn parse_public_key(hex_str: &str) -> Result<PublicKey> {
-    let bytes =
-        hex::decode(hex_str).map_err(|_e| Error::CryptoError("Invalid hex public key".to_string()))?;
+    let bytes = hex::decode(hex_str)
+        .map_err(|_e| Error::CryptoError("Invalid hex public key".to_string()))?;
 
     if bytes.len() != 32 {
         return Err(Error::CryptoError(format!(

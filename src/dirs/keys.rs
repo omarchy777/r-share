@@ -142,8 +142,8 @@ pub fn get_public_key_fingerprint_from(custom_dir: &Path) -> Result<String> {
 // Windows-specific security
 #[cfg(windows)]
 fn set_windows_security(path: &PathBuf) -> Result<()> {
-    let metadata =
-        fs::metadata(path).map_err(|_e| Error::FileError("Failed to get file metadata".to_string()))?;
+    let metadata = fs::metadata(path)
+        .map_err(|_e| Error::FileError("Failed to get file metadata".to_string()))?;
 
     let mut perms = metadata.permissions();
     perms.set_readonly(false);
