@@ -27,7 +27,7 @@ RUN ls -lh target/*.jar
 FROM eclipse-temurin:24-jre-alpine
 
 LABEL maintainer="rshare-ronakgh97"
-LABEL description="R-Share Relay Server - Secure P2P File Transfer"
+LABEL description="R-Share Relay Server"
 LABEL version="1.0.0"
 
 # Install dependencies for health checks and debugging
