@@ -18,8 +18,7 @@ signatures** and **SHA256 integrity verification**. Built with Rust CLI clients 
 - Memory-mapped file hashing for fast SHA256 integrity checks
 
 ### DEMO
-
-
+![Demo](demo.gif)
 
 ## Roadmap
 
